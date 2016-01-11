@@ -8,7 +8,7 @@ namespace SemDiff.Core
         public ConflictInfo Ancestor { get; set; }
         public ConflictInfo Local { get; set; }
         public ConflictInfo Remote { get; set; }
-
+        //Looks for changes in whitespace so that change is not added to the conflict list
         public bool IsWhiteSpaceChange
         {
             get
@@ -16,8 +16,8 @@ namespace SemDiff.Core
                 throw new NotImplementedException();
             }
         }
-
-        public bool IsSemanticChange
+        //Looks for changes in comments so that change is not added to the conflict list
+        public bool IsNonCodeChange
         {
             get
             {

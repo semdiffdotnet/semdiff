@@ -8,6 +8,7 @@ namespace SemDiff.Core
     public class RemoteChanges //TODO: Abstract to File system
     {
         public string Title { get; set; }
-        public IEnumerable<ChangedFile> Files { get; set; }
+        public IEnumerable<RemoteFile> Files { get; set; }
+        public string Date { get; set; }
     }
 }
