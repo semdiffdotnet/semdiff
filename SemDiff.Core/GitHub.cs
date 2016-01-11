@@ -38,6 +38,15 @@ namespace SemDiff.Core
         public HttpClient Client { get; private set; }
 
         /// <summary>
+        /// Checks how close the user is to the rate limit. Throws different warnings depending of if the calls are authenticated or not.
+        /// </summary>
+        /// <param name="current">Current numbers of API requests</param>
+        /// <param name="cap">Maximum number of API requests</param>
+        private void RateLimit(int current, int cap)
+        {
+
+        }
+        /// <summary>
         /// Make a request to GitHub with nessasary checks, then parse the result into the specified type
         /// </summary>
         /// <param name="url">relative url to the requested resource</param>

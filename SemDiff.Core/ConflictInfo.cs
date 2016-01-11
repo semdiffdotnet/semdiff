@@ -18,12 +18,12 @@ namespace SemDiff.Core
         public SyntaxTree Tree { get; set; }
 
         //I found some builtin functions in SyntaxNode of all places that could replace these. Need to experement a little first
-        public IEnumerable<ClassDeclarationSyntax> SuroundingClass { get; private set; }
+        public IEnumerable<ClassDeclarationSyntax> SurroundingClass { get; private set; }
 
         public IEnumerable<ClassDeclarationSyntax> ContainingClass { get; private set; }
         public IEnumerable<ClassDeclarationSyntax> IntersectingClass { get; private set; }
 
-        public IEnumerable<MethodDeclarationSyntax> SuroundingMethod { get; private set; }
+        public IEnumerable<MethodDeclarationSyntax> SurroundingMethod { get; private set; }
         public IEnumerable<MethodDeclarationSyntax> ContainingMethod { get; private set; }
         public IEnumerable<MethodDeclarationSyntax> IntersectingMethod { get; private set; }
 
