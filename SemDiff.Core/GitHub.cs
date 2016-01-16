@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace SemDiff.Core
 {
@@ -68,7 +69,7 @@ namespace SemDiff.Core
             return await response.Content.ReadAsStringAsync();
         }
 
-        public PullRequst GetPullRequests()
+        public PullRequest GetPullRequests()
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
             //$"/repos/{RepoUser}/{RepoName}/pulls"
@@ -78,8 +79,36 @@ namespace SemDiff.Core
 
         //TODO: Add More Methods As Needed (one for each type of requests)
 
-        public class PullRequst
+        public class PullRequest
         {
+        }
+        private class PRRaw
+        {
+            public string url { get; set; }
+            public int id { get; set; }
+            public string html_url { get; set; }
+            public string diff_url { get; set; }
+            public string patch_url { get; set; }
+            public string issue_url { get; set; }
+            public int number { get; set; }
+            public string state { get; set; }
+            public string locked { get; set; }
+            public IList<string> user { get; set; }
+            public string body { get; set; }
+            public string created_at { get; set; }
+            public string updated_at { get; set; }
+            public string closed_at { get; set; }
+            public string merged_at { get; set; }
+            public string merge_commit_sha { get; set; }
+            public string assignee { get; set; }
+            public string milestone { get; set; }
+            public string commits_url { get; set; }
+            public string review_comments_url { get; set; }
+            public string comments_url { get; set; }
+            public string statuses_url { get; set; }
+            public IList<string> head { get; set; }
+            public IList<string> base_PR { get; set; }
+            public IList<string> links { get; set; }
         }
     }
 }
