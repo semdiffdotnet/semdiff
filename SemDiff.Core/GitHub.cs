@@ -47,6 +47,10 @@ namespace SemDiff.Core
         {
 
         }
+        private async void APIError(string content)
+        {
+            
+        }
         /// <summary>
         /// Make a request to GitHub with nessasary checks, then parse the result into the specified type
         /// </summary>
@@ -55,7 +59,17 @@ namespace SemDiff.Core
         private async Task<T> HttpGetAsync<T>(string url)
         {
             var content = await HttpGetAsync(url);
-            return JsonConvert.DeserializeObject<T>(content);
+            try
+            {
+                var ret = JsonConvert.DeserializeObject<T>(content);
+                return JsonConvert.DeserializeObject<T>(content);
+            }
+            catch(Exception e)
+            {
+                APIError(content);
+                return default(T);
+            }
+            
         }
 
         private async Task<string> HttpGetAsync(string url)
@@ -69,46 +83,48 @@ namespace SemDiff.Core
             return await response.Content.ReadAsStringAsync();
         }
 
-        public PullRequest GetPullRequests()
+        public IList<PullRequest> GetPullRequests()
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
             //$"/repos/{RepoUser}/{RepoName}/pulls"
             //$"/repos/{RepoUser}/{RepoName}/pulls/{id}/files"
-            throw new NotImplementedException();
+            var url = "https://api.github.com/repos/" + RepoUser + "/" + RepoName + "/pulls";
+            System.IO.File.WriteAllText(@"C:\Users\Public\WriteText.txt", url);
+            var requests = HttpGetAsync<IList<PullRequest>>(url).Result;
+            foreach (var pr in requests)
+            {
+                url = url + "/"+ pr.number + "/files";
+                System.IO.File.WriteAllText(@"C:\Users\Public\WriteText2.txt", url);
+                var files = HttpGetAsync<IList<Files>>(url).Result;
+                pr.files = files;
+            }
+            return requests;
         }
 
         //TODO: Add More Methods As Needed (one for each type of requests)
 
         public class PullRequest
         {
-        }
-        private class PRRaw
-        {
-            public string url { get; set; }
-            public int id { get; set; }
-            public string html_url { get; set; }
-            public string diff_url { get; set; }
-            public string patch_url { get; set; }
-            public string issue_url { get; set; }
             public int number { get; set; }
             public string state { get; set; }
-            public string locked { get; set; }
-            public IList<string> user { get; set; }
-            public string body { get; set; }
-            public string created_at { get; set; }
+            public bool locked { get; set; }
             public string updated_at { get; set; }
-            public string closed_at { get; set; }
-            public string merged_at { get; set; }
-            public string merge_commit_sha { get; set; }
-            public string assignee { get; set; }
-            public string milestone { get; set; }
-            public string commits_url { get; set; }
-            public string review_comments_url { get; set; }
-            public string comments_url { get; set; }
-            public string statuses_url { get; set; }
-            public IList<string> head { get; set; }
-            public IList<string> base_PR { get; set; }
-            public IList<string> links { get; set; }
+            public User user { get; set; }
+            public IList<Files> files { get; set; }
+
+        }
+        public class Files
+        {
+            public string filename { get; set; }
+            public string raw_url { get; set; }
+        }
+        public class User
+        {
+            public string login { get; set; }
+        }
+        private class JsonError
+        {
+            public string message { get; set; }
         }
     }
 }
