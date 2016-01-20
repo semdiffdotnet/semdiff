@@ -116,7 +116,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ChangedFile.cs" />
+    <Compile Include="RemoteFile.cs" />
     <Compile Include="Conflict.cs" />
     <Compile Include="ConflictInfo.cs" />
     <Compile Include="Diff.cs" />
