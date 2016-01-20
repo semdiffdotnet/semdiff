@@ -10,7 +10,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void PullRequestFromTestRepo()
         {
-            var gh = new GitHub("haroldhues", "curly-broccoli");
+            var gh = new GitHub("semdiffdotnet", "curly-broccoli");
             var req = gh.GetPullRequests();
         }
     }
