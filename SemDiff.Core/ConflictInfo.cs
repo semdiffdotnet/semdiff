@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
 
@@ -12,25 +13,28 @@ namespace SemDiff.Core
     /// </summary>
     public class ConflictInfo
     {
-        public int SpanStart { get; set; }
-        public int SpanEnd { get; set; } //TODO: SpanLength may be better
-        public string Text { get; set; }
+        public TextSpan Span { get; set; }
+        public string Text => Tree?.GetText().ToString(Span);
         public SyntaxTree Tree { get; set; }
 
-        //I found some builtin functions in SyntaxNode of all places that could replace these. Need to experement a little first
-        public IEnumerable<ClassDeclarationSyntax> SuroundingClass { get; private set; }
+        private ConflictInfo()
+        {
+        }
 
-        public IEnumerable<ClassDeclarationSyntax> ContainingClass { get; private set; }
-        public IEnumerable<ClassDeclarationSyntax> IntersectingClass { get; private set; }
+        ////I found some builtin functions in SyntaxNode of all places that could replace these. Need to experement a little first
+        //public IEnumerable<ClassDeclarationSyntax> SuroundingClass { get; private set; }
 
-        public IEnumerable<MethodDeclarationSyntax> SuroundingMethod { get; private set; }
-        public IEnumerable<MethodDeclarationSyntax> ContainingMethod { get; private set; }
-        public IEnumerable<MethodDeclarationSyntax> IntersectingMethod { get; private set; }
+        //public IEnumerable<ClassDeclarationSyntax> ContainingClass { get; private set; }
+        //public IEnumerable<ClassDeclarationSyntax> IntersectingClass { get; private set; }
 
-        /// <summary>
-        /// Stores the smallest node, trivia, or syntax that completely surounding the conflicting span
-        /// </summary>
-        public object Surrounding { get; set; }
+        //public IEnumerable<MethodDeclarationSyntax> SuroundingMethod { get; private set; }
+        //public IEnumerable<MethodDeclarationSyntax> ContainingMethod { get; private set; }
+        //public IEnumerable<MethodDeclarationSyntax> IntersectingMethod { get; private set; }
+
+        ///// <summary>
+        ///// Stores the smallest node, trivia, or syntax that completely surounding the conflicting span
+        ///// </summary>
+        //public object Surrounding { get; set; }
 
         //TODO: Determine if this kind of function is nessasary
         public IEnumerable<ConflictInfo> Split(int index)
@@ -38,6 +42,18 @@ namespace SemDiff.Core
             throw new NotImplementedException();
         }
 
-        //TODO: Add static Create method when nessasary
+        internal static ConflictInfo Create(int start, int end, SyntaxTree tree)
+        {
+            return new ConflictInfo
+            {
+                Tree = tree,
+                Span = new TextSpan(start, end - start)
+            };
+        }
+
+        public override string ToString()
+        {
+            return Text;
+        }
     }
 }

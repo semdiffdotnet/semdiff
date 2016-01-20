@@ -15,8 +15,8 @@ namespace SemDiff.Core
         public TextSpan AncestorSpan { get; set; }
         public TextSpan ChangedSpan { get; set; }
 
-        public int OffsetStart => AncestorSpan.Start - ChangedSpan.Start;
-        public int OffsetEnd => AncestorSpan.End - ChangedSpan.End;
+        public int OffsetStart => ChangedSpan.Start - AncestorSpan.Start;
+        public int OffsetEnd => ChangedSpan.End - AncestorSpan.End;
 
         public string AncestorText => AncestorTree?.GetText().ToString(AncestorSpan);
         public string ChangedText => ChangedTree?.GetText().ToString(ChangedSpan);

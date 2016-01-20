@@ -51,7 +51,7 @@ namespace SemDiff.Test
             ".WrapWithMethod().Parse();
             var changed1 = @"
                 var total = 0;
-            ".WrapWithMethod().Parse();
+            ".WrapWithMethod().Parse(); //Minus 153 chars
             var changed2 = @"
                 var total = 0;
                 var n = 100;
