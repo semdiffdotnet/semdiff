@@ -109,7 +109,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="Diff3Tests.cs" />
+    <Compile Include="DiffTests.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="LoggerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

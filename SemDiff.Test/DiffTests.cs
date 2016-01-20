@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace SemDiff.Test
 {
     [TestClass]
-    public class Diff3Tests
+    public class DiffTests
     {
         [TestMethod]
         public void GetChangesNotChangedTest()
@@ -30,7 +30,7 @@ namespace SemDiff.Test
                     total = i + total;
                 }
             ".WrapWithMethod().Parse();
-            var changes = Diff3.Diff(original, changed);
+            var changes = Diff.Compare(original, changed);
             Assert.AreEqual(0, changes.Count());
         }
 
@@ -53,7 +53,7 @@ namespace SemDiff.Test
                     total += i;
                 }
             ".WrapWithMethod().Parse();
-            var changes = Diff3.Diff(original, changed);
+            var changes = Diff.Compare(original, changed);
             Assert.AreEqual("= i + total", changes.Single().AncestorText);
             Assert.AreEqual("+= i", changes.Single().ChangedText);
         }
@@ -77,7 +77,7 @@ namespace SemDiff.Test
                     total += i;
                 }
             ".WrapWithMethod().Parse();
-            var changes = Diff3.Diff(original, changed).ToList();
+            var changes = Diff.Compare(original, changed).ToList();
             Assert.AreEqual(4, changes.Count()); //Even though two changes are made it is interpreted as 4!
 
             Assert.AreEqual("n - 1", changes[0].AncestorText);
@@ -102,7 +102,7 @@ namespace SemDiff.Test
             var changed = @"
                 var str = "">>>>||||<<<<"";
             ".WrapWithMethod().Parse();
-            var changes = Diff3.Diff(original, changed).ToList();
+            var changes = Diff.Compare(original, changed).ToList();
         }
     }
 }
