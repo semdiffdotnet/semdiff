@@ -117,6 +117,8 @@
     <Compile Include="ConflictInfo.cs" />
     <Compile Include="Diff.cs" />
     <Compile Include="Diff3.cs" />
+    <Compile Include="DiffWithOrigin.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="GitHub.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

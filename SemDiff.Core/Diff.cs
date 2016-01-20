@@ -21,6 +21,15 @@ namespace SemDiff.Core
         public string AncestorText => AncestorTree?.GetText().ToString(AncestorSpan);
         public string ChangedText => ChangedTree?.GetText().ToString(ChangedSpan);
 
+        public static bool Intersects(Diff diff1, Diff diff2)
+        {
+            var start1 = diff1.AncestorSpan.Start;
+            var end1 = diff1.AncestorSpan.End;
+            var start2 = diff2.AncestorSpan.Start;
+            var end2 = diff2.AncestorSpan.End;
+            return (start2 <= start1 && start1 <= end2) || (start1 <= start2 && start2 <= end1); //true if start of one is within start of the other (inclusive)
+        }
+
         public static IEnumerable<Diff> Compare(SyntaxTree ancestor, SyntaxTree changed)
         {
             var changes = changed.GetChanges(ancestor).Select(c => new

@@ -9,6 +9,10 @@ namespace SemDiff.Core
         public ConflictInfo Local { get; set; }
         public ConflictInfo Remote { get; set; }
 
+        private Conflict()
+        {
+        }
+
         public bool IsWhiteSpaceChange
         {
             get
@@ -27,6 +31,11 @@ namespace SemDiff.Core
 
         //TODO: Determine if this kind of function is nessasary
         public IEnumerable<Conflict> Split(int ancestorIndex, int localIndex, int remoteIndex)
+        {
+            throw new NotImplementedException();
+        }
+
+        internal static Conflict Create(List<DiffWithOrigin> potentialConflict)
         {
             throw new NotImplementedException();
         }
