@@ -1,4 +1,7 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SemDiff.Core;
 using System.Linq;
 
@@ -104,41 +107,55 @@ namespace SemDiff.Test
         //    Assert.IsTrue(conflicts.Any());
         //}
 
-        [TestMethod]
-        public void CompareMethodsTest()
-        {
-            var original = (
-                "return;".Method("Member1") +
-                "return;".Method("Member3") +
-                "return;".Method("Member4") +
-                "return;".Method("Member5") +
-                "return;".Method("Member6") +
-                "return;".Method("Member7") +
-                "return;".Method("Member2") +
-                "return;".Method("Member8")
-                ).WrapWithClass().Parse();
-            var changed1 = (
-                "return;".Method("Member1") +
-                "return;".Method("Member2") +
-                "return;".Method("Member3") +
-                "return;".Method("Member4") +
-                "return;".Method("Member5") +
-                "return;".Method("Member6") +
-                "return;".Method("Member7") +
-                "return;".Method("Member8")
-                ).WrapWithClass().Parse();
-            var changed2 = (
-                "return;".Method("Member1") +
-                "return;".Method("Member3") +
-                "return;".Method("Member4") +
-                "return;".Method("Member5") +
-                "return;".Method("Member6") +
-                "return;".Method("Member7") +
-                "var x = 10; return;".Method("Member2") +
-                "return;".Method("Member8")
-                ).WrapWithClass().Parse();
-            var conflicts = Diff3.Compare(original, changed1, changed2).Conflicts.ToList();
-            Assert.IsTrue(conflicts.Any());
-        }
+        //[TestMethod]
+        //public void CompareMethodsTest()
+        //{
+        //    var original = (
+        //        "return;".Method("Member1") + 3.BlankLines() +
+        //        "return;".Method("Member3") + 3.BlankLines() +
+        //        "return;".Method("Member4") + 3.BlankLines() +
+        //        "return;".Method("Member5") + 3.BlankLines() +
+        //        "return;".Method("Member6") + 3.BlankLines() +
+        //        "return;".Method("Member7") + 3.BlankLines() +
+        //        "return;".Method("Member2") + 3.BlankLines() +
+        //        "return;".Method("Member8") + 3.BlankLines()
+        //        ).WrapWithClass().Parse();
+        //    var changed1 = (
+        //        "return;".Method("Member1") +
+        //        "return;".Method("Member2") +
+        //        "return;".Method("Member3") + 3.BlankLines() +
+        //        "return;".Method("Member4") + 3.BlankLines() +
+        //        "return;".Method("Member5") + 3.BlankLines() +
+        //        "return;".Method("Member6") + 3.BlankLines() +
+        //        "return;".Method("Member7") + 3.BlankLines() +
+        //        "return;".Method("Member8") + 3.BlankLines()
+        //        ).WrapWithClass().Parse();
+        //    var changed2 = (
+        //        "return;".Method("Member1") + 3.BlankLines() +
+        //        "return;".Method("Member3") + 3.BlankLines() +
+        //        "return;".Method("Member4") + 3.BlankLines() +
+        //        "return;".Method("Member5") + 3.BlankLines() +
+        //        "return;".Method("Member6") + 3.BlankLines() +
+        //        "return;".Method("Member7") +
+        //        "var x = 10; return;".Method("Member2") +
+        //        "return;".Method("Member8")
+        //        ).WrapWithClass().Parse();
+        //    var diff3Result = Diff3.Compare(original, changed1, changed2);
+
+        //    //Conflict captures method that was both removed and edited
+        //    var conflict = diff3Result.Conflicts.Single();
+        //    var orig = conflict.Ancestor.Node as MethodDeclarationSyntax;
+        //    Assert.IsNotNull(orig);
+        //    Assert.AreEqual(0, conflict.Local.Span.Length);
+        //    var rem = conflict.Remote.Node as MethodDeclarationSyntax;
+
+        //    //Look in the non-conflicting change that represents the
+        //    var loc = diff3Result.Local.First(diff =>
+        //            string.IsNullOrWhiteSpace(diff.Ancestor.Text) && (diff.Changed.Node as MethodDeclarationSyntax)?.Identifier.Text == rem.Identifier.Text
+        //            ).Changed.Node as MethodDeclarationSyntax;
+
+        //    var diff3ResultInner = Diff3.Compare(orig, loc, rem);
+        //    Assert.IsFalse(diff3ResultInner.Conflicts.Any());
+        //}
     }
 }

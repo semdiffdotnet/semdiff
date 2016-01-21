@@ -1,4 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -41,6 +44,11 @@ namespace SemDiff.Core
                     yield return Conflict.Create(potentialConflict);
             }
             yield break;
+        }
+
+        internal static Diff3Result Compare(SyntaxNode ancestor, SyntaxNode local, SyntaxNode remote)
+        {
+            return Compare(SyntaxFactory.SyntaxTree(ancestor), SyntaxFactory.SyntaxTree(local), SyntaxFactory.SyntaxTree(remote));
         }
     }
 }

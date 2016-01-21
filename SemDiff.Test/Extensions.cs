@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -48,5 +49,7 @@ namespace SemDiff.Test
         {content}
     }}";
         }
+
+        public static string BlankLines(this int num) => string.Join("", Enumerable.Range(0, num).Select(o => Environment.NewLine));
     }
 }
