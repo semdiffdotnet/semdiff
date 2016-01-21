@@ -21,6 +21,9 @@ namespace SemDiff.Core
         public string AncestorText => AncestorTree?.GetText().ToString(AncestorSpan);
         public string ChangedText => ChangedTree?.GetText().ToString(ChangedSpan);
 
+        public SyntaxNode AncestorNode => AncestorTree?.GetRoot().FindNode(AncestorSpan, true, false);
+        public SyntaxNode ChangedNode => ChangedTree?.GetRoot().FindNode(ChangedSpan, true, false);
+
         public static bool Intersects(Diff diff1, Diff diff2)
         {
             var start1 = diff1.AncestorSpan.Start;

@@ -24,6 +24,7 @@ namespace SemDiff.Core
                 throw new NotImplementedException();
             }
         }
+
         //Looks for changes in comments so that change is not added to the conflict list
         public bool IsNonCodeChange
         {

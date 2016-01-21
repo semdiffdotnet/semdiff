@@ -15,26 +15,12 @@ namespace SemDiff.Core
     {
         public TextSpan Span { get; set; }
         public string Text => Tree?.GetText().ToString(Span);
+        public SyntaxNode Node => Tree?.GetRoot().FindNode(Span, true, false);
         public SyntaxTree Tree { get; set; }
 
         private ConflictInfo()
         {
         }
-
-        ////I found some builtin functions in SyntaxNode of all places that could replace these. Need to experement a little first
-        //public IEnumerable<ClassDeclarationSyntax> SuroundingClass { get; private set; }
-
-        //public IEnumerable<ClassDeclarationSyntax> ContainingClass { get; private set; }
-        //public IEnumerable<ClassDeclarationSyntax> IntersectingClass { get; private set; }
-
-        //public IEnumerable<MethodDeclarationSyntax> SuroundingMethod { get; private set; }
-        //public IEnumerable<MethodDeclarationSyntax> ContainingMethod { get; private set; }
-        //public IEnumerable<MethodDeclarationSyntax> IntersectingMethod { get; private set; }
-
-        ///// <summary>
-        ///// Stores the smallest node, trivia, or syntax that completely surounding the conflicting span
-        ///// </summary>
-        //public object Surrounding { get; set; }
 
         //TODO: Determine if this kind of function is nessasary
         public IEnumerable<ConflictInfo> Split(int index)

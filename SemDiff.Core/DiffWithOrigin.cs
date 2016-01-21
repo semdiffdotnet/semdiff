@@ -6,7 +6,7 @@
 
         public static DiffWithOrigin Remote(Diff diff) => new DiffWithOrigin { Diff = diff, Origin = OriginEnum.Remote };
 
-        internal enum OriginEnum
+        public enum OriginEnum
         {
             Local,
             Remote

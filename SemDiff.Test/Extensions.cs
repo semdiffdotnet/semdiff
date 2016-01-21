@@ -11,10 +11,10 @@ namespace SemDiff.Test
 
         public static string WrapWithMethod(this string content, bool isAsync = false, string type = "Class1", string method = "Foo", string returntype = "void", string nameSpace = "ConsoleApplication", IEnumerable<string> usings = null)
         {
-            return content.Method(isAsync, method, returntype).WrapWithClass(type: type, nameSpace: nameSpace, usings: usings);
+            return content.Method(method, returntype, isAsync).WrapWithClass(type: type, nameSpace: nameSpace, usings: usings);
         }
 
-        private static string Method(this string content, bool isAsync, string method, string returntype)
+        public static string Method(this string content, string method, string returntype = "void", bool isAsync = false)
         {
             return $@"
             public {(isAsync ? "async " : "")}{returntype} {method}()
@@ -29,7 +29,7 @@ namespace SemDiff.Test
             return content.Class(type).WrapWithNamespace(nameSpace: nameSpace, usings: usings);
         }
 
-        private static string Class(this string content, string type)
+        public static string Class(this string content, string type)
         {
             return $@"
         class {type}
