@@ -7,33 +7,36 @@ using System.Collections.Generic;
 namespace SemDiff.Core
 {
     /// <summary>
-    /// Contains info about one side of a conflict. In this context, Surounding means that the span
-    /// is in between the node, Containing means that the node is in between the span, and
-    /// Intersecting means the node has one side in the span and one side out
+    /// Contains info about one side of a conflict or diff.
     /// </summary>
-    public class ConflictInfo
+    public class SpanDetails
     {
         public TextSpan Span { get; set; }
         public string Text => Tree?.GetText().ToString(Span);
         public SyntaxNode Node => Tree?.GetRoot().FindNode(Span, true, false);
         public SyntaxTree Tree { get; set; }
 
-        private ConflictInfo()
+        private SpanDetails()
         {
         }
 
         //TODO: Determine if this kind of function is nessasary
-        public IEnumerable<ConflictInfo> Split(int index)
+        public IEnumerable<SpanDetails> Split(int index)
         {
             throw new NotImplementedException();
         }
 
-        internal static ConflictInfo Create(int start, int end, SyntaxTree tree)
+        internal static SpanDetails Create(int start, int end, SyntaxTree tree)
         {
-            return new ConflictInfo
+            return Create(new TextSpan(start, end - start), tree);
+        }
+
+        internal static SpanDetails Create(TextSpan span, SyntaxTree tree)
+        {
+            return new SpanDetails
             {
                 Tree = tree,
-                Span = new TextSpan(start, end - start)
+                Span = span
             };
         }
 

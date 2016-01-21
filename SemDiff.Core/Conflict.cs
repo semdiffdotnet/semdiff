@@ -8,9 +8,9 @@ namespace SemDiff.Core
 {
     public class Conflict
     {
-        public ConflictInfo Ancestor { get; set; }
-        public ConflictInfo Local { get; set; }
-        public ConflictInfo Remote { get; set; }
+        public SpanDetails Ancestor { get; set; }
+        public SpanDetails Local { get; set; }
+        public SpanDetails Remote { get; set; }
 
         private Conflict()
         {
@@ -43,19 +43,19 @@ namespace SemDiff.Core
         internal static Conflict Create(List<DiffWithOrigin> potentialConflict)
         {
             var local = potentialConflict.Where(c => c.Origin == DiffWithOrigin.OriginEnum.Local).Select(c => c.Diff).ToList();
-            var firstLocal = local.MinBy(d => d.ChangedSpan.Start);
-            var lastLocal = local.MaxBy(d => d.ChangedSpan.End);
+            var firstLocal = local.MinBy(d => d.Changed.Span.Start);
+            var lastLocal = local.MaxBy(d => d.Changed.Span.End);
             var remote = potentialConflict.Where(c => c.Origin == DiffWithOrigin.OriginEnum.Remote).Select(c => c.Diff).ToList();
-            var firstRemote = remote.MinBy(d => d.ChangedSpan.Start);
-            var lastRemote = remote.MaxBy(d => d.ChangedSpan.End);
+            var firstRemote = remote.MinBy(d => d.Changed.Span.Start);
+            var lastRemote = remote.MaxBy(d => d.Changed.Span.End);
 
-            var first = new[] { firstLocal, firstRemote }.MinBy(c => c.AncestorSpan.Start);
-            var last = new[] { lastLocal, lastRemote }.MaxBy(c => c.AncestorSpan.End);
+            var first = new[] { firstLocal, firstRemote }.MinBy(c => c.Ancestor.Span.Start);
+            var last = new[] { lastLocal, lastRemote }.MaxBy(c => c.Ancestor.Span.End);
             var con = new Conflict
             {
-                Ancestor = ConflictInfo.Create(first.AncestorSpan.Start, last.AncestorSpan.End, first.AncestorTree),
-                Local = ConflictInfo.Create(first.AncestorSpan.Start + firstLocal.OffsetStart, last.AncestorSpan.End + lastLocal.OffsetEnd, firstLocal.ChangedTree),
-                Remote = ConflictInfo.Create(first.AncestorSpan.Start + firstRemote.OffsetStart, last.AncestorSpan.End + lastRemote.OffsetEnd, firstRemote.ChangedTree)
+                Ancestor = SpanDetails.Create(first.Ancestor.Span.Start, last.Ancestor.Span.End, first.Ancestor.Tree),
+                Local = SpanDetails.Create(first.Ancestor.Span.Start + firstLocal.OffsetStart, last.Ancestor.Span.End + lastLocal.OffsetEnd, firstLocal.Changed.Tree),
+                Remote = SpanDetails.Create(first.Ancestor.Span.Start + firstRemote.OffsetStart, last.Ancestor.Span.End + lastRemote.OffsetEnd, firstRemote.Changed.Tree)
             };
             Logger.Debug($"Conflict: {con}");
             return con;

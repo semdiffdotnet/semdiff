@@ -10,59 +10,45 @@ namespace SemDiff.Core
     /// </summary>
     public class Diff
     {
-        public SyntaxTree AncestorTree { get; set; }
-        public SyntaxTree ChangedTree { get; set; }
-        public TextSpan AncestorSpan { get; set; }
-        public TextSpan ChangedSpan { get; set; }
+        public SpanDetails Ancestor { get; set; }
+        public SpanDetails Changed { get; set; }
 
-        public int OffsetStart => ChangedSpan.Start - AncestorSpan.Start;
-        public int OffsetEnd => ChangedSpan.End - AncestorSpan.End;
-
-        public string AncestorText => AncestorTree?.GetText().ToString(AncestorSpan);
-        public string ChangedText => ChangedTree?.GetText().ToString(ChangedSpan);
-
-        public SyntaxNode AncestorNode => AncestorTree?.GetRoot().FindNode(AncestorSpan, true, false);
-        public SyntaxNode ChangedNode => ChangedTree?.GetRoot().FindNode(ChangedSpan, true, false);
+        public int OffsetStart => Changed.Span.Start - Ancestor.Span.Start;
+        public int OffsetEnd => Changed.Span.End - Ancestor.Span.End;
 
         public static bool Intersects(Diff diff1, Diff diff2)
         {
-            var start1 = diff1.AncestorSpan.Start;
-            var end1 = diff1.AncestorSpan.End;
-            var start2 = diff2.AncestorSpan.Start;
-            var end2 = diff2.AncestorSpan.End;
+            var start1 = diff1.Ancestor.Span.Start;
+            var end1 = diff1.Ancestor.Span.End;
+            var start2 = diff2.Ancestor.Span.Start;
+            var end2 = diff2.Ancestor.Span.End;
             return (start2 <= start1 && start1 <= end2) || (start1 <= start2 && start2 <= end1); //true if start of one is within start of the other (inclusive)
         }
 
         public static IEnumerable<Diff> Compare(SyntaxTree ancestor, SyntaxTree changed)
         {
-            var changes = changed.GetChanges(ancestor).Select(c => new
-            {
-                Original = c,
-                Detail = new Diff { AncestorTree = ancestor, ChangedTree = changed }
-            }).ToList();
-
             var offset = 0; //Tracks the difference in indexes as we move through the changed syntax tree
-            foreach (var change in changes) //Assumption: I assume that this will allways be given sorted by place in file
+            foreach (var change in changed.GetChanges(ancestor)) //Assumption: I assume that this will allways be given sorted by place in file
             {
-                change.Detail.AncestorSpan = change.Original.Span;
+                Logger.Debug($"{change}");
 
-                var origLength = change.Original.Span.Length;
-                var offsetChange = (change.Original.NewText.Length - origLength);
+                var origLength = change.Span.Length;
+                var offsetChange = (change.NewText.Length - origLength);
 
-                var chanStart = change.Original.Span.Start + offset;
+                var chanStart = change.Span.Start + offset;
                 var chanLength = origLength + offsetChange;
-                change.Detail.ChangedSpan = new TextSpan(chanStart, chanLength);
 
                 offset += offsetChange;
 
-                Logger.Debug($"{change}");
+                var d = new Diff { Ancestor = SpanDetails.Create(change.Span, ancestor), Changed = SpanDetails.Create(new TextSpan(chanStart, chanLength), changed) };
+
+                yield return d;
             }
-            return changes.Select(c => c.Detail); //yield function instead?
         }
 
         public override string ToString()
         {
-            return $"<<{AncestorText}||{ChangedText}>>";
+            return $"<<{Ancestor.Text}||{Changed.Text}>>";
         }
     }
 }

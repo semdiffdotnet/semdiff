@@ -50,8 +50,8 @@ namespace SemDiff.Test
                 }
             ".WrapWithMethod().Parse();
             var changes = Diff.Compare(original, changed);
-            Assert.AreEqual("= i + total", changes.Single().AncestorText);
-            Assert.AreEqual("+= i", changes.Single().ChangedText);
+            Assert.AreEqual("= i + total", changes.Single().Ancestor.Text);
+            Assert.AreEqual("+= i", changes.Single().Changed.Text);
         }
 
         [TestMethod]
@@ -76,17 +76,17 @@ namespace SemDiff.Test
             var changes = Diff.Compare(original, changed).ToList();
             Assert.AreEqual(4, changes.Count()); //Even though two changes are made it is interpreted as 4!
 
-            Assert.AreEqual("n - 1", changes[0].AncestorText);
-            Assert.AreEqual("0", changes[0].ChangedText);
+            Assert.AreEqual("n - 1", changes[0].Ancestor.Text);
+            Assert.AreEqual("0", changes[0].Changed.Text);
 
-            Assert.AreEqual(">= 0", changes[1].AncestorText);
-            Assert.AreEqual("< n", changes[1].ChangedText);
+            Assert.AreEqual(">= 0", changes[1].Ancestor.Text);
+            Assert.AreEqual("< n", changes[1].Changed.Text);
 
-            Assert.AreEqual("--", changes[2].AncestorText);
-            Assert.AreEqual("++", changes[2].ChangedText);
+            Assert.AreEqual("--", changes[2].Ancestor.Text);
+            Assert.AreEqual("++", changes[2].Changed.Text);
 
-            Assert.AreEqual("= i + total", changes[3].AncestorText);
-            Assert.AreEqual("+= i", changes[3].ChangedText);
+            Assert.AreEqual("= i + total", changes[3].Ancestor.Text);
+            Assert.AreEqual("+= i", changes[3].Changed.Text);
         }
 
         [TestMethod]

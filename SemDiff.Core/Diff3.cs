@@ -24,7 +24,7 @@ namespace SemDiff.Core
             var localChanges = local.Select(DiffWithOrigin.Local).ToList();
             var remoteChanges = remote.Select(DiffWithOrigin.Remote).ToList();
 
-            var changes = Extensions.GetMergedChangeQueue(localChanges, remoteChanges, d => d.Diff.AncestorSpan.Start);
+            var changes = Extensions.GetMergedChangeQueue(localChanges, remoteChanges, d => d.Diff.Ancestor.Span.Start);
             var potentialConflict = new List<DiffWithOrigin>();
             while (changes.Count > 0)
             {
