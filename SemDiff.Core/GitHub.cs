@@ -6,6 +6,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Net;
+using System.IO;
+using System.Collections;
 
 namespace SemDiff.Core
 {
@@ -14,10 +17,13 @@ namespace SemDiff.Core
     /// </summary>
     public class GitHub
     {
-        public GitHub(string repoUser, string repoName)
+        static string APIRateLimitNonOAuthError = "API rate limit exceeded for 199.193.235.128. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)";
+        static string APIDoesNotExistError = "Not Found";
+        public GitHub(string repoOwner, string repoName)
         {
-            RepoUser = repoUser;
+            RepoOwner = repoOwner;
             RepoName = repoName;
+            RequestsRemaining = 1;
             Client = new HttpClient //TODO: Enable gzip!
             {
                 BaseAddress = new Uri("https://api.github.com/")
@@ -25,7 +31,7 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
         }
 
-        public GitHub(string repoUser, string repoName, string authUsername, string authToken) : this(repoUser, repoName)
+        public GitHub(string repoOwner, string repoName, string authUsername, string authToken) : this(repoOwner, repoName)
         {
             AuthUsername = authUsername;
             AuthToken = authToken;
@@ -35,21 +41,18 @@ namespace SemDiff.Core
         public string AuthToken { get; set; }
         public string AuthUsername { get; set; }
         public string RepoName { get; set; }
-        public string RepoUser { get; set; }
+        public string RepoOwner { get; set; }
+        public int RequestsRemaining { get; private set; }
         public HttpClient Client { get; private set; }
 
-        /// <summary>
-        /// Checks how close the user is to the rate limit. Throws different warnings depending of if the calls are authenticated or not.
-        /// </summary>
-        /// <param name="current">Current numbers of API requests</param>
-        /// <param name="cap">Maximum number of API requests</param>
-        private void RateLimit(int current, int cap)
-        {
-
-        }
         private async void APIError(string content)
         {
-            
+            //TODO: implement Error handling
+
+
+
+            //temp
+            RequestsRemaining = 0;
         }
         /// <summary>
         /// Make a request to GitHub with nessasary checks, then parse the result into the specified type
@@ -64,12 +67,12 @@ namespace SemDiff.Core
                 var ret = JsonConvert.DeserializeObject<T>(content);
                 return JsonConvert.DeserializeObject<T>(content);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 APIError(content);
                 return default(T);
             }
-            
+
         }
 
         private async Task<string> HttpGetAsync(string url)
@@ -86,23 +89,59 @@ namespace SemDiff.Core
         public IList<PullRequest> GetPullRequests()
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
-            //$"/repos/{RepoUser}/{RepoName}/pulls"
-            //$"/repos/{RepoUser}/{RepoName}/pulls/{id}/files"
-            var url = "https://api.github.com/repos/" + RepoUser + "/" + RepoName + "/pulls";
-            System.IO.File.WriteAllText(@"C:\Users\Public\WriteText.txt", url);
+            //$"/repos/{RepoOwner}/{RepoName}/pulls"
+            //$"/repos/{RepoOwner}/{RepoName}/pulls/{id}/files"
+            var url = Client.BaseAddress + "repos/" + RepoOwner + "/" + RepoName + "/pulls";
             var requests = HttpGetAsync<IList<PullRequest>>(url).Result;
-            foreach (var pr in requests)
-            {
-                url = url + "/"+ pr.number + "/files";
-                System.IO.File.WriteAllText(@"C:\Users\Public\WriteText2.txt", url);
-                var files = HttpGetAsync<IList<Files>>(url).Result;
-                pr.files = files;
-            }
+            if (requests != default(IList<PullRequest>))
+                foreach (var pr in requests)
+                {
+                    var url2 = url + "/" + pr.number + "/files";
+                    var files = HttpGetAsync<IList<Files>>(url2).Result;
+                    pr.files = files;
+                }
             return requests;
         }
 
-        //TODO: Add More Methods As Needed (one for each type of requests)
-
+        /// <summary>
+        /// Download files for a given pull request.
+        /// Store the files in the AppData folder with a subfolder for the pull request
+        /// </summary>
+        /// <param name="pr">the PullRequest for which the files need to be downloaded</param>
+        public void DownloadFiles(PullRequest pr)
+        {
+            var x = 0;
+            var filesEnumerator = pr.files.GetEnumerator();
+            while (filesEnumerator.MoveNext())
+            {
+                x++;
+                using (WebClient client = new WebClient())
+                {
+                    var current = filesEnumerator.Current;
+                    var csFileTokens = current.filename.Split('.');
+                    if (csFileTokens[csFileTokens.Length - 1] == "cs")
+                    {
+                        var rawText = client.DownloadString(current.raw_url);
+                        var fileLines = rawText.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
+                        var directoryTokens = current.filename.Split('/');
+                        var dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/SemDiff/";
+                        foreach (var token in directoryTokens)
+                        {
+                            if (token != directoryTokens[0])
+                            {
+                                dir = dir + "/" + token;
+                            }
+                            else
+                            {
+                                dir = dir + token + "/" + pr.number;
+                            }
+                        }
+                        (new FileInfo(dir)).Directory.Create();
+                        System.IO.File.WriteAllLines(@dir, fileLines);
+                    }
+                }
+            }
+        }
         public class PullRequest
         {
             public int number { get; set; }
@@ -122,7 +161,7 @@ namespace SemDiff.Core
         {
             public string login { get; set; }
         }
-        private class JsonError
+        private class GitHubError
         {
             public string message { get; set; }
         }
