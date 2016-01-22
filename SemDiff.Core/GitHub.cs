@@ -146,7 +146,7 @@ namespace SemDiff.Core
             public int number { get; set; }
             public string state { get; set; }
             public bool locked { get; set; }
-            public string updated_at { get; set; }
+            public DateTime updated_at { get; set; }
             public User user { get; set; }
             public IList<Files> files { get; set; }
 
