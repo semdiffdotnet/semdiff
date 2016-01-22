@@ -17,7 +17,8 @@ namespace SemDiff.Core
     /// </summary>
     public class GitHub
     {
-        static string APIRateLimitNonOAuthError = "API rate limit exceeded for 199.193.235.128. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)";
+        //Figure out how to ignore the IP, possibly parse by any number and ignore blank
+        static string APIRateLimitNonOAuthError = "API rate limit exceeded for xxx.xxx.xxx.xxx. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)";
         static string APIDoesNotExistError = "Not Found";
         public GitHub(string repoOwner, string repoName)
         {
