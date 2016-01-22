@@ -43,8 +43,8 @@ namespace SemDiff.Test
                         Assert.AreEqual(r.files.Count, 1);
                         foreach(var f in r.files)
                         {
-                            Assert.AreEqual(f.filename, "Curly-Broccoli/Broccoli/AnalyseUser.cs");
-                            Assert.AreEqual(f.raw_url, "https://github.com/haroldhues/curly-broccoli/raw/79336452724314e1fb29671a7319db9d9a5c7e29/Curly-Broccoli/Broccoli/AnalyseUser.cs");
+                            Assert.AreEqual(f.filename, "Curly-Broccoli/Curly/Logger.cs");
+                            Assert.AreEqual(f.raw_url, "https://github.com/semdiffdotnet/curly-broccoli/raw/895d2ca038344aacfbcf3902e978de73a7a763fe/Curly-Broccoli/Curly/Logger.cs");
                         }
                     }
                 }
@@ -105,7 +105,7 @@ namespace SemDiff.Test
 
                             file.Close();
                         }
-                        Assert.AreEqual(counter, 35);
+                        Assert.AreEqual(counter, 34);
                     }
                 }
                 Assert.AreEqual(fourWasFound, true);

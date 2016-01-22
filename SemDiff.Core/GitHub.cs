@@ -65,7 +65,6 @@ namespace SemDiff.Core
             var content = await HttpGetAsync(url);
             try
             {
-                var ret = JsonConvert.DeserializeObject<T>(content);
                 return JsonConvert.DeserializeObject<T>(content);
             }
             catch (Exception e)
@@ -123,7 +122,6 @@ namespace SemDiff.Core
                     if (csFileTokens[csFileTokens.Length - 1] == "cs")
                     {
                         var rawText = client.DownloadString(current.raw_url);
-                        var fileLines = rawText.Split(new string[] { "\r\n", "\n" }, StringSplitOptions.None);
                         var directoryTokens = current.filename.Split('/');
                         var dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/SemDiff/";
                         foreach (var token in directoryTokens)
@@ -138,7 +136,7 @@ namespace SemDiff.Core
                             }
                         }
                         (new FileInfo(dir)).Directory.Create();
-                        System.IO.File.WriteAllLines(@dir, fileLines);
+                        System.IO.File.WriteAllText(@dir, rawText);
                     }
                 }
             }
