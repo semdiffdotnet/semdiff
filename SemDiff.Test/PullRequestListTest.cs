@@ -78,7 +78,7 @@ namespace SemDiff.Test
                         foreach (var f in r.Files)
                         {
                             directoryTokens = f.Filename.Split('/');
-                            dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/SemDiff/";
+                            dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/SemDiff/semdiffdotnet/curly-broccoli/";
 
                             dir = Path.Combine(dir, r.Number.ToString(), f.Filename);
                         }

@@ -34,6 +34,7 @@ namespace SemDiff.Core
             };
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
+            RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
         }
 
         public GitHub(string repoOwner, string repoName, string authUsername, string authToken) : this(repoOwner, repoName)
@@ -49,6 +50,7 @@ namespace SemDiff.Core
         public string RepoOwner { get; set; }
         public int RequestsRemaining { get; private set; }
         public HttpClient Client { get; private set; }
+        public string RepoFolder { get; set; }
 
         private async void APIError(string content)
         {
@@ -126,8 +128,7 @@ namespace SemDiff.Core
         {
             var rawText = await HttpGetAsync($@"https://github.com/{RepoOwner}/{RepoName}/raw/{sha}/{path}");
             path = path.Replace('/', Path.DirectorySeparatorChar);
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
-            dir = Path.Combine(dir, $"{prNum}", path);
+            var dir = Path.Combine(RepoFolder, $"{prNum}", path);
 
             if (isAncestor)
             {
