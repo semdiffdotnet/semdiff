@@ -67,7 +67,7 @@ namespace SemDiff.Test
                 Assert.AreNotEqual(github.RequestsRemaining, 0);
                 foreach (var r in requests)
                 {
-                    github.DownloadFiles(r).Wait();
+                    github.DownloadFiles(r);
                     if (r.Number == 4)
                     {
                         fourWasFound = true;

@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -111,15 +112,24 @@ namespace SemDiff.Core
         /// Store the files in the AppData folder with a subfolder for the pull request
         /// </summary>
         /// <param name="pr">the PullRequest for which the files need to be downloaded</param>
-        public async Task DownloadFiles(PullRequest pr)
+        public void DownloadFiles(PullRequest pr)
         {
             foreach (var current in pr.Files)
             {
                 var csFileTokens = current.Filename.Split('.');
                 if (csFileTokens.Last() == "cs")
                 {
-                    DownloadFile(pr.Number, current.Filename, pr.Head.Sha).Wait();
-                    DownloadFile(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true).Wait();
+                    switch (current.Status)
+                    {
+                        case Files.StatusEnum.Added:
+                        case Files.StatusEnum.Removed:
+                            break;
+
+                        case Files.StatusEnum.Modified:
+                            DownloadFile(pr.Number, current.Filename, pr.Head.Sha).Wait();
+                            DownloadFile(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true).Wait();
+                            break;
+                    }
                 }
             }
         }
@@ -157,8 +167,17 @@ namespace SemDiff.Core
         {
             public string Filename { get; set; }
 
+            [JsonConverter(typeof(StringEnumConverter))]
+            public StatusEnum Status { get; set; }
+
             //[JsonProperty("raw_url")]
             //public string RawUrl { get; set; }
+            public enum StatusEnum
+            {
+                Added,
+                Modified,
+                Removed,
+            }
         }
 
         public class User
