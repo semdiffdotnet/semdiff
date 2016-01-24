@@ -1,14 +1,15 @@
 ﻿using Microsoft.CodeAnalysis;
 using Newtonsoft.Json;
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Net;
-using System.IO;
-using System.Collections;
 
 namespace SemDiff.Core
 {
@@ -18,8 +19,10 @@ namespace SemDiff.Core
     public class GitHub
     {
         //Figure out how to ignore the IP, possibly parse by any number and ignore blank
-        static string APIRateLimitNonOAuthError = "API rate limit exceeded for xxx.xxx.xxx.xxx. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)";
-        static string APIDoesNotExistError = "Not Found";
+        private static string APIRateLimitNonOAuthError = "API rate limit exceeded for xxx.xxx.xxx.xxx. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)";
+
+        private static string APIDoesNotExistError = "Not Found";
+
         public GitHub(string repoOwner, string repoName)
         {
             RepoOwner = repoOwner;
@@ -30,6 +33,7 @@ namespace SemDiff.Core
                 BaseAddress = new Uri("https://api.github.com/")
             };
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
+            Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
         }
 
         public GitHub(string repoOwner, string repoName, string authUsername, string authToken) : this(repoOwner, repoName)
@@ -50,11 +54,10 @@ namespace SemDiff.Core
         {
             //TODO: implement Error handling
 
-
-
             //temp
             RequestsRemaining = 0;
         }
+
         /// <summary>
         /// Make a request to GitHub with nessasary checks, then parse the result into the specified type
         /// </summary>
@@ -70,9 +73,8 @@ namespace SemDiff.Core
             catch (Exception e)
             {
                 APIError(content);
-                return default(T);
+                throw;
             }
-
         }
 
         private async Task<string> HttpGetAsync(string url)
@@ -93,13 +95,12 @@ namespace SemDiff.Core
             //$"/repos/{RepoOwner}/{RepoName}/pulls/{id}/files"
             var url = Client.BaseAddress + "repos/" + RepoOwner + "/" + RepoName + "/pulls";
             var requests = HttpGetAsync<IList<PullRequest>>(url).Result;
-            if (requests != default(IList<PullRequest>))
-                foreach (var pr in requests)
-                {
-                    var url2 = url + "/" + pr.number + "/files";
-                    var files = HttpGetAsync<IList<Files>>(url2).Result;
-                    pr.files = files;
-                }
+            foreach (var pr in requests)
+            {
+                var url2 = url + "/" + pr.Number + "/files";
+                var files = HttpGetAsync<IList<Files>>(url2).Result;
+                pr.Files = files;
+            }
             return requests;
         }
 
@@ -108,61 +109,72 @@ namespace SemDiff.Core
         /// Store the files in the AppData folder with a subfolder for the pull request
         /// </summary>
         /// <param name="pr">the PullRequest for which the files need to be downloaded</param>
-        public void DownloadFiles(PullRequest pr)
+        public async Task DownloadFiles(PullRequest pr)
         {
-            var x = 0;
-            var filesEnumerator = pr.files.GetEnumerator();
-            while (filesEnumerator.MoveNext())
+            foreach (var current in pr.Files)
             {
-                x++;
-                using (WebClient client = new WebClient())
+                var csFileTokens = current.Filename.Split('.');
+                if (csFileTokens.Last() == "cs")
                 {
-                    var current = filesEnumerator.Current;
-                    var csFileTokens = current.filename.Split('.');
-                    if (csFileTokens[csFileTokens.Length - 1] == "cs")
-                    {
-                        var rawText = client.DownloadString(current.raw_url);
-                        var directoryTokens = current.filename.Split('/');
-                        var dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/SemDiff/";
-                        foreach (var token in directoryTokens)
-                        {
-                            if (token != directoryTokens[0])
-                            {
-                                dir = dir + "/" + token;
-                            }
-                            else
-                            {
-                                dir = dir + token + "/" + pr.number;
-                            }
-                        }
-                        (new FileInfo(dir)).Directory.Create();
-                        System.IO.File.WriteAllText(@dir, rawText);
-                    }
+                    DownloadFile(pr.Number, current.Filename, pr.Head.Sha).Wait();
+                    DownloadFile(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true).Wait();
                 }
             }
         }
+
+        private async Task DownloadFile(int prNum, string path, string sha, bool isAncestor = false)
+        {
+            var rawText = await HttpGetAsync($@"https://github.com/{RepoOwner}/{RepoName}/raw/{sha}/{path}");
+            path = path.Replace('/', Path.DirectorySeparatorChar);
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
+            dir = Path.Combine(dir, $"{prNum}", path);
+
+            if (isAncestor)
+            {
+                dir += ".orig";
+            }
+            new FileInfo(dir).Directory.Create();
+            File.WriteAllText(dir, rawText);
+        }
+
         public class PullRequest
         {
-            public int number { get; set; }
-            public string state { get; set; }
-            public bool locked { get; set; }
-            public DateTime updated_at { get; set; }
-            public User user { get; set; }
-            public IList<Files> files { get; set; }
+            public int Number { get; set; }
+            public string State { get; set; }
+            public bool Locked { get; set; }
 
+            [JsonProperty("updated_at")]
+            public DateTime Updated { get; set; }
+
+            public User User { get; set; }
+            public HeadBase Head { get; set; }
+            public HeadBase Base { get; set; }
+            public IList<Files> Files { get; set; }
         }
+
         public class Files
         {
-            public string filename { get; set; }
-            public string raw_url { get; set; }
+            public string Filename { get; set; }
+
+            //[JsonProperty("raw_url")]
+            //public string RawUrl { get; set; }
         }
+
         public class User
         {
-            public string login { get; set; }
+            public string Login { get; set; }
         }
+
         private class GitHubError
         {
-            public string message { get; set; }
+            public string Message { get; set; }
+        }
+
+        public class HeadBase
+        {
+            public string Label { get; set; }
+            public string Ref { get; set; }
+            public string Sha { get; set; }
         }
     }
 }
