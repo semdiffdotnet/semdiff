@@ -22,12 +22,11 @@ namespace SemDiff.Core
         //Figure out how to ignore the IP, possibly parse by any number and ignore blank
         static string APIRateLimitNonOAuthError = "API rate limit exceeded for xxx.xxx.xxx.xxx. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)";
         static string APIDoesNotExistError = "Not Found";
-        public GitHub(string repoOwner, string repoName)
 
         static GitHubConfiguration gitHubConfig =
-            new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection(""));
+            new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("semDiff/authentication"));
 
-        public GitHub(string repoUser, string repoName)
+        public GitHub(string repoOwner, string repoName)
         {
             RepoOwner = repoOwner;
             RepoName = repoName;
@@ -175,9 +174,26 @@ namespace SemDiff.Core
 
         struct GitHubConfiguration
         {
+            readonly string authenticationToken;
+
             public GitHubConfiguration(AuthenticationSection section)
             {
+                if (section.Authentication.Token == null)
+                {
+                    this.authenticationToken = null;
+                }
+                else
+                {
+                    this.authenticationToken = (section.Authentication.Token); //Needs error handling for invalid token
+                }
+            }
 
+            public string AuthenticationToken
+            {
+                get
+                {
+                    return this.authenticationToken;
+                }
             }
         }
     }
