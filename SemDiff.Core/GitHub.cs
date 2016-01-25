@@ -94,18 +94,15 @@ namespace SemDiff.Core
         public async Task<IList<PullRequest>> GetPullRequests()
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
-            //$"/repos/{RepoOwner}/{RepoName}/pulls"
-            //$"/repos/{RepoOwner}/{RepoName}/pulls/{id}/files"
-            var url = "repos/" + RepoOwner + "/" + RepoName + "/pulls";
-            var requests = await HttpGetAsync<IList<PullRequest>>(url);
+            var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
+            var pullRequests = await HttpGetAsync<IList<PullRequest>>(url);
 
-            var fileTasks = requests.Select(pr => new { Task = HttpGetAsync<IList<Files>>(url + "/" + pr.Number + "/files"), Pr = pr }).ToList();
-            await Task.WhenAll(fileTasks.Select(o => o.Task));
-            foreach (var fileTask in fileTasks)
+            return await Task.WhenAll(pullRequests.Select(async pr =>
             {
-                fileTask.Pr.Files = fileTask.Task.Result;
-            }
-            return requests;
+                var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
+                pr.Files = files;
+                return pr;
+            }));
         }
 
         /// <summary>
