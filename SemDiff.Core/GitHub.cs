@@ -1,6 +1,8 @@
 ﻿using Microsoft.CodeAnalysis;
 using Newtonsoft.Json;
+using SemDiff.Core.Configuration;
 using System;
+using System.Configuration;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -13,6 +15,9 @@ namespace SemDiff.Core
     /// </summary>
     public class GitHub
     {
+        static GitHubConfiguration gitHubConfig =
+            new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection(""));
+
         public GitHub(string repoUser, string repoName)
         {
             RepoUser = repoUser;
@@ -24,7 +29,8 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
         }
 
-        public GitHub(string repoUser, string repoName, string authUsername, string authToken) : this(repoUser, repoName)
+        public GitHub(string repoUser, string repoName, string authUsername, string authToken)
+            : this(repoUser, repoName)
         {
             AuthUsername = authUsername;
             AuthToken = authToken;
@@ -80,6 +86,14 @@ namespace SemDiff.Core
 
         public class PullRequst
         {
+        }
+
+        struct GitHubConfiguration
+        {
+            public GitHubConfiguration(AuthenticationSection section)
+            {
+
+            }
         }
     }
 }
