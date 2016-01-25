@@ -2,59 +2,64 @@
 using SemDiff.Core;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace SemDiff.Test
 {
     [TestClass]
     public class PullRequestListTest
     {
-        string owner = "semdiffdotnet";
-        string repository = "curly-broccoli";
-        GitHub github;
+        private const string owner = "semdiffdotnet";
+        private const string repository = "curly-broccoli";
+        public static GitHub github;
 
-        public void setGitHub()
+        [TestInitialize]
+        public void TestInit()
         {
             github = new GitHub(owner, repository);
+            var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
+            if (new FileInfo(appDataFolder).Exists)
+                Directory.Delete(appDataFolder, recursive: true);
         }
+
         [TestMethod]
         public void NewGitHub()
         {
-            setGitHub();
             Assert.AreEqual(github.RepoName, repository);
             Assert.AreEqual(github.RepoOwner, owner);
-
         }
+
         [TestMethod]
         public void PullRequestFromTestRepo()
         {
-            setGitHub();
             var requests = github.GetPullRequests();
-            var fourWasFound = false;
             if (github.RequestsRemaining != 0)
             {
-                foreach(var r in requests)
+                Assert.AreEqual(4, requests.Count);
+                var r = requests.First();
+                if (r.Number == 4)
                 {
-                   if(r.number == 4)
+                    Assert.AreEqual(r.Locked, false);
+                    Assert.AreEqual(r.State, "open");
+                    Assert.AreEqual(r.User.Login, "haroldhues");
+                    Assert.AreEqual(r.Files.Count, 1);
+                    foreach (var f in r.Files)
                     {
-                        fourWasFound = true;
-                        Assert.AreEqual(r.locked,false);
-                        Assert.AreEqual(r.state, "open");
-                        Assert.AreEqual(r.user.login, "haroldhues");
-                        Assert.AreEqual(r.files.Count, 1);
-                        foreach(var f in r.files)
-                        {
-                            Assert.AreEqual(f.filename, "Curly-Broccoli/Curly/Logger.cs");
-                            Assert.AreEqual(f.raw_url, "https://github.com/semdiffdotnet/curly-broccoli/raw/895d2ca038344aacfbcf3902e978de73a7a763fe/Curly-Broccoli/Curly/Logger.cs");
-                        }
+                        Assert.AreEqual("Curly-Broccoli/Curly/Logger.cs", f.Filename);
                     }
                 }
-                Assert.AreEqual(fourWasFound, true);
+                else
+                {
+                    Assert.Fail();
+                }
+                Assert.AreEqual("895d2ca038344aacfbcf3902e978de73a7a763fe", r.Head.Sha);
             }
         }
+
         [TestMethod]
         public void GetFilesFromGitHub()
         {
-            setGitHub();
             var requests = github.GetPullRequests();
             var fourWasFound = false;
             if (github.RequestsRemaining != 0)
@@ -63,28 +68,19 @@ namespace SemDiff.Test
                 foreach (var r in requests)
                 {
                     github.DownloadFiles(r);
-                    if (r.number == 4)
+                    if (r.Number == 4)
                     {
                         fourWasFound = true;
                         string line;
                         int counter = 0;
                         string[] directoryTokens;
                         string dir = "";
-                        foreach (var f in r.files)
+                        foreach (var f in r.Files)
                         {
-                            directoryTokens = f.filename.Split('/');
-                            dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/SemDiff/";
-                            foreach (var token in directoryTokens)
-                            {
-                                if (token != directoryTokens[0])
-                                {
-                                    dir = dir + "/" + token;
-                                }
-                                else
-                                {
-                                    dir = dir + token + "/" + r.number;
-                                }
-                            }
+                            directoryTokens = f.Filename.Split('/');
+                            dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "/SemDiff/semdiffdotnet/curly-broccoli/";
+
+                            dir = Path.Combine(dir, r.Number.ToString(), f.Filename);
                         }
                         using (var file = new System.IO.StreamReader(dir))
                         {
