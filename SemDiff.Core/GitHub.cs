@@ -1,8 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Newtonsoft.Json;
-using SemDiff.Core.Configuration;
 using System;
-using System.Configuration;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -23,11 +21,6 @@ namespace SemDiff.Core
         static string APIRateLimitNonOAuthError = "API rate limit exceeded for xxx.xxx.xxx.xxx. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)";
         static string APIDoesNotExistError = "Not Found";
         public GitHub(string repoOwner, string repoName)
-
-        static GitHubConfiguration gitHubConfig =
-            new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection(""));
-
-        public GitHub(string repoUser, string repoName)
         {
             RepoOwner = repoOwner;
             RepoName = repoName;
@@ -39,8 +32,7 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
         }
 
-        public GitHub(string repoUser, string repoName, string authUsername, string authToken)
-            : this(repoUser, repoName)
+        public GitHub(string repoOwner, string repoName, string authUsername, string authToken) : this(repoOwner, repoName)
         {
             AuthUsername = authUsername;
             AuthToken = authToken;
@@ -73,8 +65,8 @@ namespace SemDiff.Core
             var content = await HttpGetAsync(url);
             try
             {
-            return JsonConvert.DeserializeObject<T>(content);
-        }
+                return JsonConvert.DeserializeObject<T>(content);
+            }
             catch (Exception e)
             {
                 APIError(content);
@@ -107,7 +99,7 @@ namespace SemDiff.Core
                     var url2 = url + "/" + pr.number + "/files";
                     var files = HttpGetAsync<IList<Files>>(url2).Result;
                     pr.files = files;
-        }
+                }
             return requests;
         }
 
@@ -171,14 +163,6 @@ namespace SemDiff.Core
         private class GitHubError
         {
             public string message { get; set; }
-        }
-
-        struct GitHubConfiguration
-        {
-            public GitHubConfiguration(AuthenticationSection section)
-            {
-
-            }
         }
     }
 }
