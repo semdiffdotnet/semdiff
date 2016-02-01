@@ -33,7 +33,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void PullRequestFromTestRepo()
         {
-            var requests = github.GetPullRequests();
+            var requests = github.GetPullRequests().Result;
             if (github.RequestsRemaining != 0)
             {
                 Assert.AreEqual(4, requests.Count);
@@ -60,7 +60,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void GetFilesFromGitHub()
         {
-            var requests = github.GetPullRequests();
+            var requests = github.GetPullRequests().Result;
             var fourWasFound = false;
             if (github.RequestsRemaining != 0)
             {

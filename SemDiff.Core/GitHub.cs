@@ -91,20 +91,18 @@ namespace SemDiff.Core
             return await response.Content.ReadAsStringAsync();
         }
 
-        public IList<PullRequest> GetPullRequests()
+        public async Task<IList<PullRequest>> GetPullRequests()
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
-            //$"/repos/{RepoOwner}/{RepoName}/pulls"
-            //$"/repos/{RepoOwner}/{RepoName}/pulls/{id}/files"
-            var url = Client.BaseAddress + "repos/" + RepoOwner + "/" + RepoName + "/pulls";
-            var requests = HttpGetAsync<IList<PullRequest>>(url).Result;
-            foreach (var pr in requests)
+            var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
+            var pullRequests = await HttpGetAsync<IList<PullRequest>>(url);
+
+            return await Task.WhenAll(pullRequests.Select(async pr =>
             {
-                var url2 = url + "/" + pr.Number + "/files";
-                var files = HttpGetAsync<IList<Files>>(url2).Result;
+                var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
                 pr.Files = files;
-            }
-            return requests;
+                return pr;
+            }));
         }
 
         /// <summary>
@@ -112,7 +110,7 @@ namespace SemDiff.Core
         /// Store the files in the AppData folder with a subfolder for the pull request
         /// </summary>
         /// <param name="pr">the PullRequest for which the files need to be downloaded</param>
-        public void DownloadFiles(PullRequest pr)
+        public async Task DownloadFiles(PullRequest pr)
         {
             foreach (var current in pr.Files)
             {
@@ -126,8 +124,9 @@ namespace SemDiff.Core
                             break;
 
                         case Files.StatusEnum.Modified:
-                            DownloadFile(pr.Number, current.Filename, pr.Head.Sha).Wait();
-                            DownloadFile(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true).Wait();
+                            var headTsk = DownloadFile(pr.Number, current.Filename, pr.Head.Sha);
+                            var ancTsk = DownloadFile(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
+                            await Task.WhenAll(headTsk, ancTsk);
                             break;
                     }
                 }
