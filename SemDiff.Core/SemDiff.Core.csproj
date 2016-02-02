@@ -128,6 +128,7 @@
     <Compile Include="Diff3Result.cs" />
     <Compile Include="RemoteFile.cs" />
     <Compile Include="Conflict.cs" />
+    <Compile Include="SemDiffAnalyzer.cs" />
     <Compile Include="SpanDetails.cs" />
     <Compile Include="Diff.cs" />
     <Compile Include="Diff3.cs" />
