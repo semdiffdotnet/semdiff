@@ -125,6 +125,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Analysis.cs" />
+    <Compile Include="DetectedFalseNegative.cs" />
+    <Compile Include="DetectedFalsePositive.cs" />
+    <Compile Include="Diagnostics.cs" />
     <Compile Include="Diff3Result.cs" />
     <Compile Include="RemoteFile.cs" />
     <Compile Include="Conflict.cs" />
