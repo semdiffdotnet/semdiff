@@ -52,13 +52,6 @@ namespace SemDiff.Core
             RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
         }
 
-        public GitHub(string repoOwner, string repoName, string authUsername, string authToken) : this(repoOwner, repoName)
-        {
-            AuthUsername = authUsername;
-            AuthToken = authToken;
-            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
-        }
-
         public string AuthToken { get; set; }
         public string AuthUsername { get; set; }
         public string RepoName { get; set; }
