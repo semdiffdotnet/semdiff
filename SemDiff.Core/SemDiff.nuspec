@@ -17,7 +17,7 @@
     </description>
     <summary>Tool which can diff C# code semantically, rather than simply by the program's text</summary>
     <releaseNotes>Initial Release</releaseNotes>
-    <tags>roslyn, analyzers, semantics, merge, github</tags>
+    <tags>roslyn, analyzers, semantics, merge, github, csharp</tags>
     <developmentDependency>true</developmentDependency>
     <frameworkAssemblies>
       <frameworkAssembly assemblyName="System" targetFramework="" />
