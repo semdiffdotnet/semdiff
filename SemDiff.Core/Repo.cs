@@ -13,6 +13,11 @@ namespace SemDiff.Core
     {
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
 
+        /// <summary>
+        /// Looks for the git repo above the current file in the directory higherarchy. Null will be returned if no repo was found.
+        /// </summary>
+        /// <param name="filePath">Path to file in repo</param>
+        /// <returns>Representation of repo or null (to indicate not found)</returns>
         public static Repo GetRepoFor(string filePath)
         {
             return _repoLookup.GetOrAdd(Path.GetDirectoryName(filePath), AddRepo);

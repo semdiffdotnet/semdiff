@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
+  <metadata>
+    <id>SemDiff</id>
+    <!-- Change to the current version number (ex: 0.1-alpha) to build with package, also change release notes (add githash please) -->
+    <version>$version$</version>
+    <title>SemDiff - C# Semantic Diff</title>
+    <authors>https://github.com/orgs/semdiffdotnet/people</authors>
+    <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>
+    <projectUrl>https://github.com/semdiffdotnet/semdiff</projectUrl>
+    <!--<iconUrl>https://avatars.githubusercontent.com/u/15133594</iconUrl>-->
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>
+      Tool which can diff C# code semantically, rather than simply by the program's text.
+
+      This is a community project, free and open source. Everyone is invited to contribute, fork, share and use the code. No money shall be charged by this software, nor it will be. Ever.
+    </description>
+    <summary>Tool which can diff C# code semantically, rather than simply by the program's text</summary>
+    <releaseNotes>Initial Release</releaseNotes>
+    <tags>roslyn, analyzers, semantics, merge, github, csharp</tags>
+    <developmentDependency>true</developmentDependency>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="System" targetFramework="" />
+    </frameworkAssemblies>
+  </metadata>
+  <!-- The convention for analyzers is to put language agnostic dlls in analyzers\portable50 and language specific analyzers in either analyzers\portable50\cs or analyzers\portable50\vb -->
+  <files>
+    <file src="*.dll" target="analyzers\dotnet\cs" exclude="**\Microsoft.CodeAnalysis.*;**\System.Collections.Immutable.*;**\System.Reflection.Metadata.*;**\System.Composition.*" />
+    <file src="tools\*.ps1" target="tools\" />
+  </files>
+</package>
