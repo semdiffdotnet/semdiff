@@ -8,13 +8,7 @@ namespace SemDiff.Core
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class SemDiffAnalyzer : DiagnosticAnalyzer
     {
-        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics
-        {
-            get //This will call into our message component to get the kinds it will produce
-            {
-                throw new NotImplementedException();
-            }
-        }
+        public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Diagnostics.Supported;
 
         //Called once per solution, to provide us an oportunity to assign callbacks
         public override void Initialize(AnalysisContext context)
@@ -23,20 +17,26 @@ namespace SemDiff.Core
             context.RegisterSemanticModelAction(OnSemanticModel);
         }
 
-        private static void OnSyntaxTree(SyntaxTreeAnalysisContext obj)
+        private static void OnSyntaxTree(SyntaxTreeAnalysisContext context)
         {
-            var filePath = obj.Tree.FilePath;
+            var filePath = context.Tree.FilePath;
             var repo = Repo.GetRepoFor(filePath);
             if (repo == null)
-                throw new NotImplementedException(); //This is where the false positive detection will be called
+            {
+                var fps = Analysis.ForFalsePositive(repo, context.Tree, filePath);
+                Diagnostics.Report(fps, context.ReportDiagnostic);
+            }
         }
 
-        private static void OnSemanticModel(SemanticModelAnalysisContext obj)
+        private static void OnSemanticModel(SemanticModelAnalysisContext context)
         {
-            var filePath = obj.SemanticModel.SyntaxTree.FilePath;
+            var filePath = context.SemanticModel.SyntaxTree.FilePath;
             var repo = Repo.GetRepoFor(filePath);
             if (repo == null)
-                throw new NotImplementedException(); //This is where the false negative detection will be called
+            {
+                var fns = Analysis.ForFalseNegative(repo, context.SemanticModel);
+                Diagnostics.Report(fns, context.ReportDiagnostic);
+            }
         }
     }
 }
