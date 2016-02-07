@@ -37,7 +37,7 @@ namespace SemDiff.Core
             if (File.Exists(gitconfig))
             {
                 Logger.Info($"Git Config File Found: {gitconfig}");
-                return RepoFromConfig(directoryPath);
+                return RepoFromConfig(directoryPath, gitconfig);
             }
             else
             {
@@ -60,9 +60,8 @@ namespace SemDiff.Core
         public GitHub GitHubApi { get; private set; }
         public DateTime LastUpdate { get; internal set; } = DateTime.MinValue; //Old date insures update first time
 
-        internal static Repo RepoFromConfig(string repoDir)
+        internal static Repo RepoFromConfig(string repoDir, string gitconfigPath)
         {
-            var gitconfigPath = Path.Combine(repoDir, ".git", "config");
             var config = File.ReadAllText(gitconfigPath);
             var match = _gitHubUrl.Match(config);
             if (!match.Success)

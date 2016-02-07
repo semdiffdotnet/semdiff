@@ -31,7 +31,7 @@ namespace SemDiff.Core
             this.RepoOwner = repoOwner;
             this.RepoName = repoName;
 
-            Client = new HttpClient //TODO: Enable gzip!
+            Client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate })
             {
                 BaseAddress = new Uri("https://api.github.com/")
             };
