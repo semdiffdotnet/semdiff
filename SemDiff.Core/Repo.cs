@@ -1,6 +1,8 @@
-﻿using System;
+﻿using SemDiff.Core.Configuration;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
 using System.Text.RegularExpressions;
 
@@ -12,6 +14,10 @@ namespace SemDiff.Core
     public class Repo
     {
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
+        public static bool Authentication { get; set; } = true;
+
+        private static GitHubConfiguration gitHubConfig =
+            new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("SemDiff.Core/authentication"));
 
         /// <summary>
         /// Looks for the git repo above the current file in the directory higherarchy. Null will be returned if no repo was found.
@@ -49,6 +55,7 @@ namespace SemDiff.Core
 
         public string Owner { get; private set; }
         public string Name { get; private set; }
+        public GitHub GitHubApi { get; private set; }
 
         internal static Repo RepoFromConfig(string gitconfigPath)
         {
@@ -74,6 +81,16 @@ namespace SemDiff.Core
 
         internal Repo(string owner, string name)
         {
+            if (Authentication)
+            {
+                string authToken = gitHubConfig.AuthenicationToken;
+                string authUsername = gitHubConfig.Username;
+                GitHubApi = new GitHub(owner, name, authUsername, authToken);
+            }
+            else
+            {
+                GitHubApi = new GitHub(owner, name);
+            }
             Owner = owner;
             Name = name;
         }
@@ -95,7 +112,6 @@ namespace SemDiff.Core
 
         public void Update()
         {
-            throw new NotImplementedException();
         }
     }
 }

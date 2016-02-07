@@ -26,9 +26,6 @@ namespace SemDiff.Core
 
         private static string APIDoesNotExistError = "Not Found";
 
-        static GitHubConfiguration gitHubConfig =
-            new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("SemDiff.Core/authentication"));
-
         public GitHub(string repoOwner, string repoName)
         {
             this.RepoOwner = repoOwner;
@@ -42,14 +39,14 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
-            string authToken = gitHubConfig.AuthenicationToken;
-            string authUsername = gitHubConfig.Username;
-            if (!string.IsNullOrEmpty(authToken) || !string.IsNullOrEmpty(authUsername))
-            {
-                Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{authUsername}:{authToken}")));
-            }
-
             RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
+        }
+
+        public GitHub(string repoOwner, string repoName, string authUsername, string authToken) : this(repoOwner, repoName)
+        {
+            AuthUsername = authUsername;
+            AuthToken = authToken;
+            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
         }
 
         public string AuthToken { get; set; }
@@ -201,42 +198,6 @@ namespace SemDiff.Core
             public string Label { get; set; }
             public string Ref { get; set; }
             public string Sha { get; set; }
-        }
-
-        struct GitHubConfiguration
-        {
-            readonly string authenticationToken;
-            readonly string username;
-
-            public GitHubConfiguration(AuthenticationSection section)
-            {
-                if (section == null)
-                {
-                    this.authenticationToken = null;
-                    this.username = null;
-                }
-                else
-                {
-                    this.authenticationToken = section.Authentication.Token;
-                    this.username = section.Authentication.Username;
-                }
-            }
-
-            public string AuthenicationToken
-            {
-                get
-                {
-                    return this.authenticationToken;
-                }
-            }
-
-            public string Username
-            {
-                get
-                {
-                    return this.username;
-                }
-            }
         }
     }
 }
