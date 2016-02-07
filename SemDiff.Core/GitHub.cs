@@ -31,7 +31,6 @@ namespace SemDiff.Core
             this.RepoOwner = repoOwner;
             this.RepoName = repoName;
 
-            this.RequestsRemaining = 1;
             Client = new HttpClient //TODO: Enable gzip!
             {
                 BaseAddress = new Uri("https://api.github.com/")
@@ -54,15 +53,16 @@ namespace SemDiff.Core
         public string RepoName { get; set; }
         public string RepoOwner { get; set; }
         public int RequestsRemaining { get; private set; }
+        public int RequestsLimit { get; private set; }
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
 
-        private async void APIError(string content)
+        /// <summary>
+        /// Makes a request to github to update RequestsRemaining and RequestsLimit
+        /// </summary>
+        public Task UpdateLimit()
         {
-            //TODO: implement Error handling
-
-            //temp
-            RequestsRemaining = 0;
+            return HttpGetAsync("/rate_limit");
         }
 
         /// <summary>
@@ -79,7 +79,6 @@ namespace SemDiff.Core
             }
             catch (Exception e)
             {
-                APIError(content);
                 throw;
             }
         }
@@ -88,12 +87,23 @@ namespace SemDiff.Core
         {
             //Request, but retry once waiting 5 minutes
             var response = await Extensions.RetryOnce(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
+            IEnumerable<string> headerVal;
+            if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
+            {
+                RequestsLimit = int.Parse(headerVal.Single());
+            }
+            if (response.Headers.TryGetValues("X-RateLimit-Remaining", out headerVal))
+            {
+                RequestsRemaining = int.Parse(headerVal.Single());
+            }
             if (!response.IsSuccessStatusCode)
             {
                 switch (response.StatusCode)
                 {
                     case HttpStatusCode.Unauthorized:
                         throw new UnauthorizedAccessException("Authentication Failure");
+                    case HttpStatusCode.Forbidden:
+                        throw new UnauthorizedAccessException("Rate Limit Exceeded");
                     default:
                         throw new NotImplementedException();
                 }

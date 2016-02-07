@@ -15,6 +15,7 @@ namespace SemDiff.Core
     {
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         public static bool Authentication { get; set; } = true;
+        public static TimeSpan MaxUpdateInterval { get; set; } = TimeSpan.FromMinutes(5);
 
         internal static GitHubConfiguration gitHubConfig =
             new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("SemDiff.Core/authentication"));
@@ -36,7 +37,7 @@ namespace SemDiff.Core
             if (File.Exists(gitconfig))
             {
                 Logger.Info($"Git Config File Found: {gitconfig}");
-                return RepoFromConfig(gitconfig);
+                return RepoFromConfig(directoryPath);
             }
             else
             {
@@ -55,10 +56,13 @@ namespace SemDiff.Core
 
         public string Owner { get; private set; }
         public string Name { get; private set; }
+        public string LocalDirectory { get; private set; }
         public GitHub GitHubApi { get; private set; }
+        public DateTime LastUpdate { get; internal set; } = DateTime.MinValue; //Old date insures update first time
 
-        internal static Repo RepoFromConfig(string gitconfigPath)
+        internal static Repo RepoFromConfig(string repoDir)
         {
+            var gitconfigPath = Path.Combine(repoDir, ".git", "config");
             var config = File.ReadAllText(gitconfigPath);
             var match = _gitHubUrl.Match(config);
             if (!match.Success)
@@ -68,7 +72,7 @@ namespace SemDiff.Core
             var owner = match.Groups[3].Value;
             var name = match.Groups[4].Value;
             Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
-            return new Repo(owner, name);
+            return new Repo(repoDir, owner, name);
         }
 
         /// <summary>
@@ -79,7 +83,7 @@ namespace SemDiff.Core
             _repoLookup.Clear();
         }
 
-        internal Repo(string owner, string name)
+        internal Repo(string directory, string owner, string name)
         {
             if (Authentication)
             {
@@ -93,6 +97,7 @@ namespace SemDiff.Core
             }
             Owner = owner;
             Name = name;
+            LocalDirectory = directory;
         }
 
         /// <summary>
@@ -107,11 +112,17 @@ namespace SemDiff.Core
 
         public void TriggerUpdate()
         {
-            throw new NotImplementedException();
+            var elapsedSinceUpdate = (DateTime.Now - LastUpdate);
+            if (elapsedSinceUpdate > MaxUpdateInterval)
+            {
+                Update();
+                LastUpdate = DateTime.Now;
+            }
         }
 
         public void Update()
         {
+            var pulls = GitHubApi.GetPullRequests();
         }
     }
 }
