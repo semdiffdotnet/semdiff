@@ -86,11 +86,17 @@ namespace SemDiff.Core
 
         private async Task<string> HttpGetAsync(string url)
         {
-            //TODO: Handle Errors Here vv
-            var response = await Client.GetAsync(url);
+            //Request, but retry once waiting 5 minutes
+            var response = await Extensions.RetryOnce(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
             if (!response.IsSuccessStatusCode)
             {
-                //TODO: Implement Check
+                switch (response.StatusCode)
+                {
+                    case HttpStatusCode.Unauthorized:
+                        throw new UnauthorizedAccessException("Authentication Failure");
+                    default:
+                        throw new NotImplementedException();
+                }
             }
             return await response.Content.ReadAsStringAsync();
         }

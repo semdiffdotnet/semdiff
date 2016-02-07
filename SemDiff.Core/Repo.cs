@@ -16,7 +16,7 @@ namespace SemDiff.Core
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         public static bool Authentication { get; set; } = true;
 
-        private static GitHubConfiguration gitHubConfig =
+        internal static GitHubConfiguration gitHubConfig =
             new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("SemDiff.Core/authentication"));
 
         /// <summary>

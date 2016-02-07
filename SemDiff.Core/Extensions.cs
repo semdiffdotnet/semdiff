@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SemDiff.Core
 {
@@ -43,6 +44,20 @@ namespace SemDiff.Core
                 }
             }
             return result;
+        }
+
+        public async static Task<T> RetryOnce<T>(this Func<Task<T>> tsk, TimeSpan wait)
+        {
+            try
+            {
+                return await tsk();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex.Message);
+                await Task.Delay(wait);
+                return await tsk();
+            }
         }
     }
 }
