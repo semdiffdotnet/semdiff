@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace SemDiff.Core
@@ -59,6 +60,7 @@ namespace SemDiff.Core
         public string LocalDirectory { get; private set; }
         public GitHub GitHubApi { get; private set; }
         public DateTime LastUpdate { get; internal set; } = DateTime.MinValue; //Old date insures update first time
+        internal Dictionary<int, RemoteChanges> RemoteChangesData { get; set; } = new Dictionary<int, RemoteChanges>();
 
         internal static Repo RepoFromConfig(string repoDir, string gitconfigPath)
         {
@@ -105,23 +107,18 @@ namespace SemDiff.Core
         /// <returns></returns>
         public IEnumerable<RemoteChanges> GetRemoteChanges()
         {
-            TriggerUpdate();
-            throw new NotImplementedException();
-        }
-
-        public void TriggerUpdate()
-        {
             var elapsedSinceUpdate = (DateTime.Now - LastUpdate);
             if (elapsedSinceUpdate > MaxUpdateInterval)
             {
-                Update();
+                RemoteChangesData.Clear();
+                var pulls = GitHubApi.GetPullRequests().Result;
+                foreach (var p in pulls)
+                {
+                    RemoteChangesData.Add(p.Number, p.ToRemoteChanges(GitHubApi.RepoFolder));
+                }
                 LastUpdate = DateTime.Now;
             }
-        }
-
-        public void Update()
-        {
-            var pulls = GitHubApi.GetPullRequests();
+            return RemoteChangesData.Values;
         }
     }
 }

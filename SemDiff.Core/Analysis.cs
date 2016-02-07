@@ -15,6 +15,7 @@ namespace SemDiff.Core
         /// </summary>
         public static IEnumerable<DetectedFalsePositive> ForFalsePositive(Repo repo, SyntaxTree tree, string filePath)
         {
+            var pulls = repo.GetRemoteChanges();
             throw new NotImplementedException();
         }
 
@@ -23,6 +24,7 @@ namespace SemDiff.Core
         /// </summary>
         public static IEnumerable<DetectedFalseNegative> ForFalseNegative(Repo repo, SemanticModel semanticModel)
         {
+            var pulls = repo.GetRemoteChanges();
             throw new NotImplementedException();
         }
     }

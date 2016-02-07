@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using SemDiff.Core.Configuration;
@@ -157,20 +158,28 @@ namespace SemDiff.Core
         {
             var rawText = await HttpGetAsync($@"https://github.com/{RepoOwner}/{RepoName}/raw/{sha}/{path}");
             path = path.Replace('/', Path.DirectorySeparatorChar);
-            var dir = Path.Combine(RepoFolder, $"{prNum}", path);
+            string dir = GetPathInCache(RepoFolder, prNum, path, isAncestor);
+            new FileInfo(dir).Directory.Create();
+            File.WriteAllText(dir, rawText);
+        }
+
+        private static string GetPathInCache(string repofolder, int prNum, string path, bool isAncestor = false)
+        {
+            var dir = Path.Combine(repofolder, $"{prNum}", path);
 
             if (isAncestor)
             {
                 dir += ".orig";
             }
-            new FileInfo(dir).Directory.Create();
-            File.WriteAllText(dir, rawText);
+
+            return dir;
         }
 
         public class PullRequest
         {
             public int Number { get; set; }
             public string State { get; set; }
+            public string Title { get; set; }
             public bool Locked { get; set; }
 
             [JsonProperty("updated_at")]
@@ -180,6 +189,16 @@ namespace SemDiff.Core
             public HeadBase Head { get; set; }
             public HeadBase Base { get; set; }
             public IList<Files> Files { get; set; }
+
+            internal RemoteChanges ToRemoteChanges(string repofolder)
+            {
+                return new RemoteChanges
+                {
+                    Date = Updated,
+                    Title = Title,
+                    Files = Files.Where(f => f.Status == GitHub.Files.StatusEnum.Modified).Where(f => f.Filename.Split('.').Last() == "cs").Select(f => f.ToRemoteFile(repofolder, Number)).ToList(),
+                };
+            }
         }
 
         public class Files
@@ -188,6 +207,18 @@ namespace SemDiff.Core
 
             [JsonConverter(typeof(StringEnumConverter))]
             public StatusEnum Status { get; set; }
+
+            internal RemoteFile ToRemoteFile(string repofolder, int num)
+            {
+                var baseP = GetPathInCache(repofolder, num, Filename, isAncestor: true);
+                var fileP = GetPathInCache(repofolder, num, Filename, isAncestor: false);
+                return new RemoteFile
+                {
+                    Filename = Filename,
+                    Base = CSharpSyntaxTree.ParseText(File.ReadAllText(baseP), path: baseP),
+                    File = CSharpSyntaxTree.ParseText(File.ReadAllText(fileP), path: fileP)
+                };
+            }
 
             //[JsonProperty("raw_url")]
             //public string RawUrl { get; set; }
