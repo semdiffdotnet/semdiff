@@ -21,7 +21,7 @@ namespace SemDiff.Core
         {
             var filePath = context.Tree.FilePath;
             var repo = Repo.GetRepoFor(filePath);
-            if (repo == null)
+            if (repo != null)
             {
                 var fps = Analysis.ForFalsePositive(repo, context.Tree, filePath);
                 Diagnostics.Report(fps, context.ReportDiagnostic);
@@ -32,7 +32,7 @@ namespace SemDiff.Core
         {
             var filePath = context.SemanticModel.SyntaxTree.FilePath;
             var repo = Repo.GetRepoFor(filePath);
-            if (repo == null)
+            if (repo != null)
             {
                 var fns = Analysis.ForFalseNegative(repo, context.SemanticModel);
                 Diagnostics.Report(fns, context.ReportDiagnostic);
