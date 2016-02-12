@@ -1,7 +1,10 @@
-﻿using System;
+﻿using SemDiff.Core.Configuration;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace SemDiff.Core
@@ -12,6 +15,11 @@ namespace SemDiff.Core
     public class Repo
     {
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
+        public static bool Authentication { get; set; } = true;
+        public static TimeSpan MaxUpdateInterval { get; set; } = TimeSpan.FromMinutes(5);
+
+        internal static GitHubConfiguration gitHubConfig =
+            new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("SemDiff.Core/authentication"));
 
         /// <summary>
         /// Looks for the git repo above the current file in the directory higherarchy. Null will be returned if no repo was found.
@@ -30,7 +38,7 @@ namespace SemDiff.Core
             if (File.Exists(gitconfig))
             {
                 Logger.Info($"Git Config File Found: {gitconfig}");
-                return RepoFromConfig(gitconfig);
+                return RepoFromConfig(directoryPath, gitconfig);
             }
             else
             {
@@ -49,8 +57,12 @@ namespace SemDiff.Core
 
         public string Owner { get; private set; }
         public string Name { get; private set; }
+        public string LocalDirectory { get; private set; }
+        public GitHub GitHubApi { get; private set; }
+        public DateTime LastUpdate { get; internal set; } = DateTime.MinValue; //Old date insures update first time
+        internal Dictionary<int, RemoteChanges> RemoteChangesData { get; set; } = new Dictionary<int, RemoteChanges>();
 
-        internal static Repo RepoFromConfig(string gitconfigPath)
+        internal static Repo RepoFromConfig(string repoDir, string gitconfigPath)
         {
             var config = File.ReadAllText(gitconfigPath);
             var match = _gitHubUrl.Match(config);
@@ -61,7 +73,7 @@ namespace SemDiff.Core
             var owner = match.Groups[3].Value;
             var name = match.Groups[4].Value;
             Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
-            return new Repo(owner, name);
+            return new Repo(repoDir, owner, name);
         }
 
         /// <summary>
@@ -72,10 +84,21 @@ namespace SemDiff.Core
             _repoLookup.Clear();
         }
 
-        internal Repo(string owner, string name)
+        internal Repo(string directory, string owner, string name)
         {
+            if (Authentication)
+            {
+                string authToken = gitHubConfig.AuthenicationToken;
+                string authUsername = gitHubConfig.Username;
+                GitHubApi = new GitHub(owner, name, authUsername, authToken);
+            }
+            else
+            {
+                GitHubApi = new GitHub(owner, name);
+            }
             Owner = owner;
             Name = name;
+            LocalDirectory = directory;
         }
 
         /// <summary>
@@ -84,18 +107,18 @@ namespace SemDiff.Core
         /// <returns></returns>
         public IEnumerable<RemoteChanges> GetRemoteChanges()
         {
-            TriggerUpdate();
-            throw new NotImplementedException();
-        }
-
-        public void TriggerUpdate()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Update()
-        {
-            throw new NotImplementedException();
+            var elapsedSinceUpdate = (DateTime.Now - LastUpdate);
+            if (elapsedSinceUpdate > MaxUpdateInterval)
+            {
+                RemoteChangesData.Clear();
+                var pulls = GitHubApi.GetPullRequests().Result;
+                foreach (var p in pulls)
+                {
+                    RemoteChangesData.Add(p.Number, p.ToRemoteChanges(GitHubApi.RepoFolder));
+                }
+                LastUpdate = DateTime.Now;
+            }
+            return RemoteChangesData.Values;
         }
     }
 }

@@ -12,7 +12,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void RepoFromConfigTest()
         {
-            var repo = Repo.RepoFromConfig("testgitconfig.txt");
+            var repo = Repo.RepoFromConfig(".", "testgitconfig.txt");
             Assert.AreEqual("dotnet", repo.Owner);
             Assert.AreEqual("roslyn", repo.Name);
         }
@@ -20,7 +20,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void RepoFromConfig2Test()
         {
-            var repo = Repo.RepoFromConfig("testgitconfig2.txt");
+            var repo = Repo.RepoFromConfig(".", "testgitconfig2.txt");
             Assert.AreEqual("haroldhues", repo.Owner);
             Assert.AreEqual("HaroldHues-Public", repo.Name);
         }

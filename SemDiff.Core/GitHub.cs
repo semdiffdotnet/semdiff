@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using SemDiff.Core.Configuration;
@@ -26,30 +27,26 @@ namespace SemDiff.Core
 
         private static string APIDoesNotExistError = "Not Found";
 
-        static GitHubConfiguration gitHubConfig =
-            new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("SemDiff.Core/authentication"));
-
         public GitHub(string repoOwner, string repoName)
         {
             this.RepoOwner = repoOwner;
             this.RepoName = repoName;
 
-            this.RequestsRemaining = 1;
-            Client = new HttpClient //TODO: Enable gzip!
+            Client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate })
             {
                 BaseAddress = new Uri("https://api.github.com/")
             };
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
-            string authToken = gitHubConfig.AuthenicationToken;
-            string authUsername = gitHubConfig.Username;
-            if (!string.IsNullOrEmpty(authToken) || !string.IsNullOrEmpty(authUsername))
-            {
-                Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{authUsername}:{authToken}")));
-            }
-
             RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
+        }
+
+        public GitHub(string repoOwner, string repoName, string authUsername, string authToken) : this(repoOwner, repoName)
+        {
+            AuthUsername = authUsername;
+            AuthToken = authToken;
+            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
         }
 
         public string AuthToken { get; set; }
@@ -57,15 +54,16 @@ namespace SemDiff.Core
         public string RepoName { get; set; }
         public string RepoOwner { get; set; }
         public int RequestsRemaining { get; private set; }
+        public int RequestsLimit { get; private set; }
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
 
-        private async void APIError(string content)
+        /// <summary>
+        /// Makes a request to github to update RequestsRemaining and RequestsLimit
+        /// </summary>
+        public Task UpdateLimit()
         {
-            //TODO: implement Error handling
-
-            //temp
-            RequestsRemaining = 0;
+            return HttpGetAsync("/rate_limit");
         }
 
         /// <summary>
@@ -82,18 +80,34 @@ namespace SemDiff.Core
             }
             catch (Exception e)
             {
-                APIError(content);
                 throw;
             }
         }
 
         private async Task<string> HttpGetAsync(string url)
         {
-            //TODO: Handle Errors Here vv
-            var response = await Client.GetAsync(url);
+            //Request, but retry once waiting 5 minutes
+            var response = await Extensions.RetryOnce(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
+            IEnumerable<string> headerVal;
+            if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
+            {
+                RequestsLimit = int.Parse(headerVal.Single());
+            }
+            if (response.Headers.TryGetValues("X-RateLimit-Remaining", out headerVal))
+            {
+                RequestsRemaining = int.Parse(headerVal.Single());
+            }
             if (!response.IsSuccessStatusCode)
             {
-                //TODO: Implement Check
+                switch (response.StatusCode)
+                {
+                    case HttpStatusCode.Unauthorized:
+                        throw new UnauthorizedAccessException("Authentication Failure");
+                    case HttpStatusCode.Forbidden:
+                        throw new UnauthorizedAccessException("Rate Limit Exceeded");
+                    default:
+                        throw new NotImplementedException();
+                }
             }
             return await response.Content.ReadAsStringAsync();
         }
@@ -144,20 +158,28 @@ namespace SemDiff.Core
         {
             var rawText = await HttpGetAsync($@"https://github.com/{RepoOwner}/{RepoName}/raw/{sha}/{path}");
             path = path.Replace('/', Path.DirectorySeparatorChar);
-            var dir = Path.Combine(RepoFolder, $"{prNum}", path);
+            string dir = GetPathInCache(RepoFolder, prNum, path, isAncestor);
+            new FileInfo(dir).Directory.Create();
+            File.WriteAllText(dir, rawText);
+        }
+
+        private static string GetPathInCache(string repofolder, int prNum, string path, bool isAncestor = false)
+        {
+            var dir = Path.Combine(repofolder, $"{prNum}", path);
 
             if (isAncestor)
             {
                 dir += ".orig";
             }
-            new FileInfo(dir).Directory.Create();
-            File.WriteAllText(dir, rawText);
+
+            return dir;
         }
 
         public class PullRequest
         {
             public int Number { get; set; }
             public string State { get; set; }
+            public string Title { get; set; }
             public bool Locked { get; set; }
 
             [JsonProperty("updated_at")]
@@ -167,6 +189,16 @@ namespace SemDiff.Core
             public HeadBase Head { get; set; }
             public HeadBase Base { get; set; }
             public IList<Files> Files { get; set; }
+
+            internal RemoteChanges ToRemoteChanges(string repofolder)
+            {
+                return new RemoteChanges
+                {
+                    Date = Updated,
+                    Title = Title,
+                    Files = Files.Where(f => f.Status == GitHub.Files.StatusEnum.Modified).Where(f => f.Filename.Split('.').Last() == "cs").Select(f => f.ToRemoteFile(repofolder, Number)).ToList(),
+                };
+            }
         }
 
         public class Files
@@ -175,6 +207,18 @@ namespace SemDiff.Core
 
             [JsonConverter(typeof(StringEnumConverter))]
             public StatusEnum Status { get; set; }
+
+            internal RemoteFile ToRemoteFile(string repofolder, int num)
+            {
+                var baseP = GetPathInCache(repofolder, num, Filename, isAncestor: true);
+                var fileP = GetPathInCache(repofolder, num, Filename, isAncestor: false);
+                return new RemoteFile
+                {
+                    Filename = Filename,
+                    Base = CSharpSyntaxTree.ParseText(File.ReadAllText(baseP), path: baseP),
+                    File = CSharpSyntaxTree.ParseText(File.ReadAllText(fileP), path: fileP)
+                };
+            }
 
             //[JsonProperty("raw_url")]
             //public string RawUrl { get; set; }
@@ -201,42 +245,6 @@ namespace SemDiff.Core
             public string Label { get; set; }
             public string Ref { get; set; }
             public string Sha { get; set; }
-        }
-
-        struct GitHubConfiguration
-        {
-            readonly string authenticationToken;
-            readonly string username;
-
-            public GitHubConfiguration(AuthenticationSection section)
-            {
-                if (section == null)
-                {
-                    this.authenticationToken = null;
-                    this.username = null;
-                }
-                else
-                {
-                    this.authenticationToken = section.Authentication.Token;
-                    this.username = section.Authentication.Username;
-                }
-            }
-
-            public string AuthenicationToken
-            {
-                get
-                {
-                    return this.authenticationToken;
-                }
-            }
-
-            public string Username
-            {
-                get
-                {
-                    return this.username;
-                }
-            }
         }
     }
 }

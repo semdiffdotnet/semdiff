@@ -135,6 +135,7 @@
     <Compile Include="DetectedFalsePositive.cs" />
     <Compile Include="Diagnostics.cs" />
     <Compile Include="Diff3Result.cs" />
+    <Compile Include="GitHubConfiguration.cs" />
     <Compile Include="RemoteFile.cs" />
     <Compile Include="Conflict.cs" />
     <Compile Include="SemDiffAnalyzer.cs" />

@@ -1,30 +1,38 @@
 ﻿namespace SemDiff.Test
 {
-    using System;
-    using Microsoft.VisualStudio.TestTools.UnitTesting;
     using Core;
-    using System.Collections.Generic;
     using Core.Configuration;
+    using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using System;
+    using System.Collections.Generic;
     using System.Configuration;
+    using System.Threading.Tasks;
 
     [TestClass]
     public class GitHubAuthTest
     {
-        string owner = "semdiffdotnet";
-        string repository = "curly-broccoli";
+        private string owner = "semdiffdotnet";
+        private string repository = "curly-broccoli";
 
-        IList<GitHub.PullRequest> pullRequests;
-        GitHub github;
+        private IList<GitHub.PullRequest> pullRequests;
+        private GitHub github;
 
         public GitHubAuthTest()
         {
-            this.github = new GitHub(this.owner, this.repository);
+            github = new GitHub(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
         }
 
         [TestMethod]
-        public void AuthorizedPullRequests()
+        public async Task AuthorizedPullRequests()
         {
-            this.pullRequests = this.github.GetPullRequests().Result;
+            try
+            {
+                pullRequests = await github.GetPullRequests();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Assert.Inconclusive("Try adding your credetials to the AppConfig :)");
+            }
         }
     }
 }
