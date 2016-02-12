@@ -110,6 +110,7 @@ namespace SemDiff.Test
         //[TestMethod]
         //public void CompareMethodsTest()
         //{
+        //    //This is our base (the common ancestor)
         //    var original = (
         //        "return;".Method("Member1") + 3.BlankLines() +
         //        "return;".Method("Member3") + 3.BlankLines() +
@@ -119,8 +120,10 @@ namespace SemDiff.Test
         //        "return;".Method("Member7") + 3.BlankLines() +
         //        "return;".Method("Member2") + 3.BlankLines() +
         //        "return;".Method("Member8") + 3.BlankLines()
+        //        //Utilities for producing valid syntaxtree
         //        ).WrapWithClass().Parse();
-        //    var changed1 = (
+        //    //This is like a local developer that moves a method (method 2)
+        //    var local = (
         //        "return;".Method("Member1") +
         //        "return;".Method("Member2") +
         //        "return;".Method("Member3") + 3.BlankLines() +
@@ -130,12 +133,80 @@ namespace SemDiff.Test
         //        "return;".Method("Member7") + 3.BlankLines() +
         //        "return;".Method("Member8") + 3.BlankLines()
         //        ).WrapWithClass().Parse();
-        //    var changed2 = (
+        //    //This is like a pull request that modifies a method (method 2)
+        //    var remote = (
         //        "return;".Method("Member1") + 3.BlankLines() +
         //        "return;".Method("Member3") + 3.BlankLines() +
         //        "return;".Method("Member4") + 3.BlankLines() +
         //        "return;".Method("Member5") + 3.BlankLines() +
         //        "return;".Method("Member6") + 3.BlankLines() +
+        //        "return;".Method("Member7") +
+        //        "var x = 10; return;".Method("Member2") +
+        //        "return;".Method("Member8")
+        //        ).WrapWithClass().Parse();
+
+        //    //Run through the Diff3 logic to get the changes and the conflicts
+        //    var diff3Result = Diff3.Compare(original, local, remote);
+
+        //    //Conflict captures method that was both removed and edited
+        //    //Assume that there is only one for this test!
+        //    var conflict = diff3Result.Conflicts.Single();
+        //    //Assume that we have captured a whole method in our conflict
+        //    var orig = conflict.Ancestor.Node as MethodDeclarationSyntax;
+        //    Assert.IsNotNull(orig);
+        //    //Check that it is removed locally
+        //    Assert.AreEqual(0, conflict.Local.Span.Length);
+        //    //Get changed method!
+        //    var rem = conflict.Remote.Node as MethodDeclarationSyntax;
+        //    Assert.IsNotNull(rem);
+
+        //    //Look in the non-conflicting change that represents the method
+        //    //    being added somewhere else (move destination)
+        //    var loc = diff3Result.Local
+        //            //Make sure there is nothing there before
+        //            .Where(diff => string.IsNullOrWhiteSpace(diff.Ancestor.Text))
+        //            //Make sure there is a method there afterwards
+        //            .Select(diff => diff.Changed.Node as MethodDeclarationSyntax)
+        //            .Where(method => method != null)
+        //            //Make sure that it matches our method's name
+        //            .First(method => method.Identifier.Text == rem.Identifier.Text);
+        //    Assert.IsNotNull(loc);
+
+        //    //Now we diff the insides of the methods
+        //    var diff3ResultInner = Diff3.Compare(orig, loc, rem);
+        //    //Since there is no conflicts inside the method, this is a false-positive!
+        //    Assert.IsFalse(diff3ResultInner.Conflicts.Any());
+        //}
+
+        //[TestMethod]
+        //public void CompareMethods2Test()
+        //{
+        //    var original = (
+        //        "return;".Method("Member1") +
+        //        "return;".Method("Member3") +
+        //        "return;".Method("Member4") +
+        //        "return;".Method("Member5") +
+        //        "return;".Method("Member6") +
+        //        "return;".Method("Member7") +
+        //        "return;".Method("Member2") +
+        //        "return;".Method("Member8")
+        //        ).WrapWithClass().Parse();
+        //    var changed1 = (
+        //        "return;".Method("Member1") +
+        //        "return;".Method("Member2") +
+        //        "return;".Method("Member3") +
+        //        "return;".Method("Member4") +
+        //        "return;".Method("Member5") +
+        //        "return;".Method("Member6") +
+        //        "return;".Method("Member7") +
+        //        "return;".Method("Member8")
+        //        ).WrapWithClass().Parse();
+        //    var changed2 = (
+        //        "return;".Method("Member1") +
+        //        "return;".Method("Member3") +
+        //        "return;".Method("Member4") +
+        //        "return;".Method("Member5") +
+        //        "return;".Method("Member6") +
         //        "return;".Method("Member7") +
         //        "var x = 10; return;".Method("Member2") +
         //        "return;".Method("Member8")
