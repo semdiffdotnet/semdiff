@@ -34,12 +34,6 @@ namespace SemDiff.Core
             }
         }
 
-        //TODO: Determine if this kind of function is nessasary
-        public IEnumerable<Conflict> Split(int ancestorIndex, int localIndex, int remoteIndex)
-        {
-            throw new NotImplementedException();
-        }
-
         internal static Conflict Create(List<DiffWithOrigin> potentialConflict)
         {
             var local = potentialConflict.Where(c => c.Origin == DiffWithOrigin.OriginEnum.Local).Select(c => c.Diff).ToList();

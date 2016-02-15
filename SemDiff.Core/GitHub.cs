@@ -1,12 +1,8 @@
-﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+﻿using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using SemDiff.Core.Configuration;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -22,15 +18,10 @@ namespace SemDiff.Core
     /// </summary>
     public class GitHub
     {
-        //Figure out how to ignore the IP, possibly parse by any number and ignore blank
-        private static string APIRateLimitNonOAuthError = "API rate limit exceeded for xxx.xxx.xxx.xxx. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.)";
-
-        private static string APIDoesNotExistError = "Not Found";
-
         public GitHub(string repoOwner, string repoName)
         {
-            this.RepoOwner = repoOwner;
-            this.RepoName = repoName;
+            RepoOwner = repoOwner;
+            RepoName = repoName;
 
             Client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate })
             {
@@ -61,7 +52,7 @@ namespace SemDiff.Core
         /// <summary>
         /// Makes a request to github to update RequestsRemaining and RequestsLimit
         /// </summary>
-        public Task UpdateLimit()
+        public Task UpdateLimitAsync()
         {
             return HttpGetAsync("/rate_limit");
         }
@@ -78,7 +69,7 @@ namespace SemDiff.Core
             {
                 return JsonConvert.DeserializeObject<T>(content);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 throw;
             }
@@ -87,7 +78,7 @@ namespace SemDiff.Core
         private async Task<string> HttpGetAsync(string url)
         {
             //Request, but retry once waiting 5 minutes
-            var response = await Extensions.RetryOnce(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
+            var response = await Extensions.RetryOnceAsync(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
             IEnumerable<string> headerVal;
             if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
             {
@@ -112,7 +103,7 @@ namespace SemDiff.Core
             return await response.Content.ReadAsStringAsync();
         }
 
-        public async Task<IList<PullRequest>> GetPullRequests()
+        public async Task<IList<PullRequest>> GetPullRequestsAsync()
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
             var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
@@ -131,7 +122,7 @@ namespace SemDiff.Core
         /// Store the files in the AppData folder with a subfolder for the pull request
         /// </summary>
         /// <param name="pr">the PullRequest for which the files need to be downloaded</param>
-        public async Task DownloadFiles(PullRequest pr)
+        public async Task DownloadFilesAsync(PullRequest pr)
         {
             foreach (var current in pr.Files)
             {
@@ -145,8 +136,8 @@ namespace SemDiff.Core
                             break;
 
                         case Files.StatusEnum.Modified:
-                            var headTsk = DownloadFile(pr.Number, current.Filename, pr.Head.Sha);
-                            var ancTsk = DownloadFile(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
+                            var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
+                            var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
                             await Task.WhenAll(headTsk, ancTsk);
                             break;
                     }
@@ -154,11 +145,11 @@ namespace SemDiff.Core
             }
         }
 
-        private async Task DownloadFile(int prNum, string path, string sha, bool isAncestor = false)
+        private async Task DownloadFileAsync(int prNum, string path, string sha, bool isAncestor = false)
         {
             var rawText = await HttpGetAsync($@"https://github.com/{RepoOwner}/{RepoName}/raw/{sha}/{path}");
             path = path.Replace('/', Path.DirectorySeparatorChar);
-            string dir = GetPathInCache(RepoFolder, prNum, path, isAncestor);
+            var dir = GetPathInCache(RepoFolder, prNum, path, isAncestor);
             new FileInfo(dir).Directory.Create();
             File.WriteAllText(dir, rawText);
         }

@@ -1,11 +1,11 @@
 ﻿using SemDiff.Core.Configuration;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Configuration;
 using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace SemDiff.Core
 {
@@ -60,7 +60,7 @@ namespace SemDiff.Core
         public string LocalDirectory { get; private set; }
         public GitHub GitHubApi { get; private set; }
         public DateTime LastUpdate { get; internal set; } = DateTime.MinValue; //Old date insures update first time
-        internal Dictionary<int, RemoteChanges> RemoteChangesData { get; set; } = new Dictionary<int, RemoteChanges>();
+        internal ImmutableDictionary<int, RemoteChanges> RemoteChangesData { get; private set; } = ImmutableDictionary<int, RemoteChanges>.Empty;
 
         internal static Repo RepoFromConfig(string repoDir, string gitconfigPath)
         {
@@ -88,8 +88,8 @@ namespace SemDiff.Core
         {
             if (Authentication)
             {
-                string authToken = gitHubConfig.AuthenicationToken;
-                string authUsername = gitHubConfig.Username;
+                var authToken = gitHubConfig.AuthenicationToken;
+                var authUsername = gitHubConfig.Username;
                 GitHubApi = new GitHub(owner, name, authUsername, authToken);
             }
             else
@@ -102,23 +102,28 @@ namespace SemDiff.Core
         }
 
         /// <summary>
-        /// Gets Pull Requests and the master branch if it has been modified
+        /// Gets Pull Requests and the master branch if it has been modified, this method also insures that we don't update more than MaxUpdateInterval
         /// </summary>
-        /// <returns></returns>
-        public IEnumerable<RemoteChanges> GetRemoteChanges()
+        public async Task UpdateRemoteChangesAsync()
         {
             var elapsedSinceUpdate = (DateTime.Now - LastUpdate);
             if (elapsedSinceUpdate > MaxUpdateInterval)
             {
-                RemoteChangesData.Clear();
-                var pulls = GitHubApi.GetPullRequests().Result;
+                //TODO: Need a lock around this block so that if this method is called concurrently twice it will only make requests once.
+
+                //Many Changes will be made to the Immutable Dictionary so we will use the builder interface
+                var remChanges = RemoteChangesData.ToBuilder();
+
+                var pulls = await GitHubApi.GetPullRequestsAsync();
                 foreach (var p in pulls)
                 {
-                    RemoteChangesData.Add(p.Number, p.ToRemoteChanges(GitHubApi.RepoFolder));
+                    remChanges.Add(p.Number, p.ToRemoteChanges(GitHubApi.RepoFolder));
                 }
+
+                //Update our RemoteChangesData referace to new data
+                RemoteChangesData = remChanges.ToImmutable();
                 LastUpdate = DateTime.Now;
             }
-            return RemoteChangesData.Values;
         }
     }
 }

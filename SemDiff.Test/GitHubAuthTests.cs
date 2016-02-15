@@ -1,11 +1,9 @@
 ﻿namespace SemDiff.Test
 {
     using Core;
-    using Core.Configuration;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
     using System;
     using System.Collections.Generic;
-    using System.Configuration;
     using System.Threading.Tasks;
 
     [TestClass]
@@ -27,9 +25,9 @@
         {
             try
             {
-                pullRequests = await github.GetPullRequests();
+                pullRequests = await github.GetPullRequestsAsync();
             }
-            catch (UnauthorizedAccessException ex)
+            catch (UnauthorizedAccessException)
             {
                 Assert.Inconclusive("Try adding your credetials to the AppConfig :)");
             }

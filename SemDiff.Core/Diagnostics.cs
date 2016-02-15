@@ -1,8 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Threading;
 
 namespace SemDiff.Core
 {
@@ -47,17 +44,21 @@ namespace SemDiff.Core
         /// <summary>
         /// Converts `DetectedFalseNegative`s to Diagnostics (the class provided by Roslyn) and sends them to the function provided
         /// </summary>
-        public static void Report(IEnumerable<DetectedFalseNegative> fps, Action<Diagnostic> reporter)
+        /// <param name="fps">todo: describe fps parameter on Convert</param>
+        public static Diagnostic Convert(DetectedFalseNegative fps)
         {
-            reporter(Diagnostic.Create(FalseNegative, Location.None, "FileName", @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33"));
+            //TODO: NotImplimented
+            return Diagnostic.Create(FalseNegative, Location.None, "FileName", @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33");
         }
 
         /// <summary>
         /// Converts `DetectedFalsePositive`s to Diagnostics (the class provided by Roslyn) and sends them to the function provided
         /// </summary>
-        public static void Report(IEnumerable<DetectedFalsePositive> fps, Action<Diagnostic> reporter)
+        /// <param name="fps">todo: describe fps parameter on Convert</param>
+        public static Diagnostic Convert(DetectedFalsePositive fps)
         {
-            reporter(Diagnostic.Create(FalsePositive, Location.None, @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33"));
+            //TODO: NotImplimented
+            return Diagnostic.Create(FalsePositive, Location.None, @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33");
         }
     }
 }

@@ -1,8 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
-using System;
-using System.Collections.Generic;
 
 namespace SemDiff.Core
 {
@@ -18,12 +15,6 @@ namespace SemDiff.Core
 
         private SpanDetails()
         {
-        }
-
-        //TODO: Determine if this kind of function is nessasary
-        public IEnumerable<SpanDetails> Split(int index)
-        {
-            throw new NotImplementedException();
         }
 
         internal static SpanDetails Create(int start, int end, SyntaxTree tree)

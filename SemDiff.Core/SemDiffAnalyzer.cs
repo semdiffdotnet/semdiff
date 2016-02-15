@@ -1,8 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SemDiff.Core
 {
@@ -23,23 +25,36 @@ namespace SemDiff.Core
         /// <param name="context">context provided by roslyn that contains the SyntaxTree, SemanticModel, FilePath, etc.</param>
         private static void OnSemanticModel(SemanticModelAnalysisContext context)
         {
+            var semanticModel = context.SemanticModel;
+            var diags = AnalyzeAsync(semanticModel).Result;
+
+            foreach (var d in diags)
+            {
+                context.ReportDiagnostic(d);
+            }
+        }
+
+        private static async Task<IEnumerable<Diagnostic>> AnalyzeAsync(SemanticModel semanticModel)
+        {
+            var diags = Enumerable.Empty<Diagnostic>();
             try
             {
-                var filePath = context.SemanticModel.SyntaxTree.FilePath;
+                var filePath = semanticModel.SyntaxTree.FilePath;
                 var repo = Repo.GetRepoFor(filePath);
                 if (repo != null)
                 {
-                    var fps = Analysis.ForFalsePositive(repo, context.SemanticModel.SyntaxTree, filePath);
-                    Diagnostics.Report(fps, context.ReportDiagnostic);
-
-                    var fns = Analysis.ForFalseNegative(repo, context.SemanticModel);
-                    Diagnostics.Report(fns, context.ReportDiagnostic);
+                    await repo.UpdateRemoteChangesAsync();
+                    var fps = Analysis.ForFalsePositive(repo, semanticModel.SyntaxTree, filePath);
+                    var fns = Analysis.ForFalseNegative(repo, semanticModel);
+                    diags = fns.Select(Diagnostics.Convert).Concat(fns.Select(Diagnostics.Convert));
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error($"Unhandled Exception: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
             }
+
+            return diags;
         }
     }
 }
