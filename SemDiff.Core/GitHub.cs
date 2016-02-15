@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -65,14 +66,7 @@ namespace SemDiff.Core
         private async Task<T> HttpGetAsync<T>(string url)
         {
             var content = await HttpGetAsync(url);
-            try
-            {
-                return JsonConvert.DeserializeObject<T>(content);
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+            return DeserializeWithErrorHandling<T>(content);
         }
 
         private async Task<string> HttpGetAsync(string url)
@@ -93,11 +87,13 @@ namespace SemDiff.Core
                 switch (response.StatusCode)
                 {
                     case HttpStatusCode.Unauthorized:
-                        throw new UnauthorizedAccessException("Authentication Failure");
+                        throw new GitHubAuthenticationFailureException();
                     case HttpStatusCode.Forbidden:
-                        throw new UnauthorizedAccessException("Rate Limit Exceeded");
+                        throw new GitHubRateLimitExceededException();
                     default:
-                        throw new NotImplementedException();
+                        var str = await response.Content.ReadAsStringAsync();
+                        var error = DeserializeWithErrorHandling<GitHubError>(str);
+                        throw error.ToException();
                 }
             }
             return await response.Content.ReadAsStringAsync();
@@ -166,6 +162,18 @@ namespace SemDiff.Core
             return dir;
         }
 
+        private static T DeserializeWithErrorHandling<T>(string content)
+        {
+            try
+            {
+                return JsonConvert.DeserializeObject<T>(content);
+            }
+            catch (Exception ex)
+            {
+                throw new GitHubDeserializationException(ex);
+            }
+        }
+
         public class PullRequest
         {
             public int Number { get; set; }
@@ -226,16 +234,28 @@ namespace SemDiff.Core
             public string Login { get; set; }
         }
 
-        private class GitHubError
-        {
-            public string Message { get; set; }
-        }
-
         public class HeadBase
         {
             public string Label { get; set; }
             public string Ref { get; set; }
             public string Sha { get; set; }
+        }
+
+        internal class GitHubError
+        {
+            private string Message { get; set; }
+
+            [JsonProperty("documentation_url")]
+            private string DocumentationUrl { get; set; }
+
+            internal Exception ToException()
+            {
+                return new GitHubUnknownErrorException(
+                        string.IsNullOrWhiteSpace(DocumentationUrl)
+                        ? Message
+                        : $"({Message})[{DocumentationUrl}]"
+                        );
+            }
         }
     }
 }

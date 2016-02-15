@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using System;
 using System.Collections.Immutable;
 
 namespace SemDiff.Core
@@ -59,6 +60,43 @@ namespace SemDiff.Core
         {
             //TODO: NotImplimented
             return Diagnostic.Create(FalsePositive, Location.None, @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33");
+        }
+
+        /// <summary>
+        /// Returns a diagnostic that represents a message that a repo was found but could a github url was not found.
+        /// </summary>
+        /// <param name="message">The exception message that should contain the path</param>
+        /// <returns></returns>
+        internal static Diagnostic NotGitHubRepo(string message)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Returns a diagnostic that represents a friendly message that the rate limit has been exceeded and a link to our documention.
+        /// </summary>
+        /// <returns></returns>
+        internal static Diagnostic RateLimit()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Returns a Diagnostic that represents authentication failure
+        /// </summary>
+        public static Diagnostic AuthenticationFailure()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Should create a diagnostic that represents something like this: Unexpected Error Occured while ((verbNounPhrase))
+        /// </summary>
+        /// <param name="verbNounPhrase">Something like: Washing the Car, Mowing the Lawn, or Burning out a Fuze up here Alone</param>
+        /// <returns></returns>
+        internal static Diagnostic UnexpectedError(string verbNounPhrase)
+        {
+            throw new NotImplementedException();
         }
     }
 }

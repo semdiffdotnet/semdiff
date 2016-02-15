@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -26,6 +27,8 @@ namespace SemDiff.Core
         private static void OnSemanticModel(SemanticModelAnalysisContext context)
         {
             var semanticModel = context.SemanticModel;
+            //This should be only blocking call in this project, this is needed because Roslyn
+            //does *not* provide a way to assign a callback that returns Task
             var diags = AnalyzeAsync(semanticModel).Result;
 
             foreach (var d in diags)
@@ -49,8 +52,34 @@ namespace SemDiff.Core
                     diags = fns.Select(Diagnostics.Convert).Concat(fns.Select(Diagnostics.Convert));
                 }
             }
+            catch (GitHubAuthenticationFailureException ex)
+            {
+                diags = new[] { Diagnostics.AuthenticationFailure() };
+                Logger.Error(ex.Message);
+            }
+            catch (GitHubRateLimitExceededException ex)
+            {
+                diags = new[] { Diagnostics.RateLimit() };
+                Logger.Error(ex.Message);
+            }
+            catch (GitHubUrlNotFoundException ex)
+            {
+                diags = new[] { Diagnostics.NotGitHubRepo(ex.Message) };
+                Logger.Error(ex.Message);
+            }
+            catch (GitHubUnknownErrorException ex)
+            {
+                diags = new[] { Diagnostics.UnexpectedError("Communicating with GitHub") };
+                Logger.Error(ex.Message);
+            }
+            catch (GitHubDeserializationException ex)
+            {
+                diags = new[] { Diagnostics.UnexpectedError("Deserializing Data") };
+                Logger.Error(ex.Message);
+            }
             catch (Exception ex)
             {
+                diags = new[] { Diagnostics.UnexpectedError("Performing Analysis") };
                 Logger.Error($"Unhandled Exception: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
             }
 

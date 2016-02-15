@@ -1,4 +1,5 @@
 ﻿using SemDiff.Core.Configuration;
+using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
@@ -53,7 +54,7 @@ namespace SemDiff.Core
             }
         }
 
-        private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)\.git");
+        private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)(\.git|)");
 
         public string Owner { get; private set; }
         public string Name { get; private set; }
@@ -67,7 +68,7 @@ namespace SemDiff.Core
             var config = File.ReadAllText(gitconfigPath);
             var match = _gitHubUrl.Match(config);
             if (!match.Success)
-                throw new NotImplementedException("Git repo doesn't seem to be a GitHub repository");
+                throw new GitHubUrlNotFoundException(path: repoDir);
 
             var url = match.Value;
             var owner = match.Groups[3].Value;
