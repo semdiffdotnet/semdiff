@@ -26,6 +26,14 @@ namespace SemDiff.Test
         }
 
         [TestMethod]
+        public void RepoFromConfig3Test()
+        {
+            var repo = Repo.RepoFromConfig(".", "testgitconfig3.txt");
+            Assert.AreEqual("dotnet", repo.Owner);
+            Assert.AreEqual("roslyn", repo.Name);
+        }
+
+        [TestMethod]
         public void GetRepoForThisFileTest()
         {
             var thisFile = GetFileName();

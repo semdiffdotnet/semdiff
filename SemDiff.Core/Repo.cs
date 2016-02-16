@@ -54,7 +54,7 @@ namespace SemDiff.Core
             }
         }
 
-        private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)(\.git|)");
+        private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)");
 
         public string Owner { get; private set; }
         public string Name { get; private set; }
@@ -70,9 +70,14 @@ namespace SemDiff.Core
             if (!match.Success)
                 throw new GitHubUrlNotFoundException(path: repoDir);
 
-            var url = match.Value;
-            var owner = match.Groups[3].Value;
-            var name = match.Groups[4].Value;
+            var url = match.Value.Trim();
+            var owner = match.Groups[3].Value.Trim();
+            var name = match.Groups[4].Value.Trim();
+
+            if (name.EndsWith(".git"))
+            {
+                name = name.Replace(".git", "");
+            }
             Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
             return new Repo(repoDir, owner, name);
         }
