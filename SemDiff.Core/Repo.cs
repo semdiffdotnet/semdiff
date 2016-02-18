@@ -1,10 +1,12 @@
-﻿using SemDiff.Core.Configuration;
+﻿using MoreLinq;
+using SemDiff.Core.Configuration;
 using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Configuration;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -76,7 +78,7 @@ namespace SemDiff.Core
 
             if (name.EndsWith(".git"))
             {
-                name = name.Replace(".git", "");
+                name = name.Substring(0, name.Length - 4);
             }
             Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
             return new Repo(repoDir, owner, name);
