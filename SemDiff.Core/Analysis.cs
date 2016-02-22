@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System;
 using System.Collections.Generic;
@@ -17,8 +18,68 @@ namespace SemDiff.Core
         /// </summary>
         public static IEnumerable<DetectedFalsePositive> ForFalsePositive(Repo repo, SyntaxTree tree, string filePath)
         {
-            var pulls = GetPulls(repo, filePath);
-            throw new NotImplementedException();
+            var relativePath = GetRelativePath(repo.LocalDirectory, filePath).Replace('\\', '/'); //Standardize Directory Separator!
+            if (string.IsNullOrWhiteSpace(relativePath))
+            {
+                yield break;
+            }
+            var pulls = GetPulls(repo, relativePath);
+            foreach (var fp in pulls)
+            {
+                var f = fp.Item1;
+                var p = fp.Item2;
+
+                var conflicts = Diff3.Compare(f.Base, tree, f.File);
+                var locs = GetInsertedMethods(conflicts.Local);
+                var rems = GetInsertedMethods(conflicts.Remote);
+                foreach (var c in conflicts.Conflicts.Where(con => con.Ancestor.Node is MethodDeclarationSyntax)) //Warning: do we need to convert Conflicts to list first?
+                {
+                    var ancestor = (MethodDeclarationSyntax)c.Ancestor.Node;
+                    if (ancestor == null)
+                        break;
+
+                    var localRemoved = GetInnerMethodConflicts(ancestor, c.Remote, c.Local, locs);
+                    var remoteRemoved = GetInnerMethodConflicts(ancestor, c.Local, c.Remote, rems);
+                    foreach (var diff3 in localRemoved.Concat(remoteRemoved))
+                    {
+                        if (!diff3.Conflicts.Any()) //TODO: this doesn't filter out things like adding comments yet
+                        {
+                            //Since Inner method actually has no conflicts, we found a false positive
+                            yield return new DetectedFalsePositive
+                            {
+                                LocalFile = filePath,
+                                RemoteFile = f,
+                                RemoteChange = p,
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
+        private static IEnumerable<Diff3Result> GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, List<MethodDeclarationSyntax> insertedMethods)
+        {
+            if (string.IsNullOrWhiteSpace(removed.Text))
+            {
+                var change = changed.Node as MethodDeclarationSyntax;
+                if (change != null)
+                {
+                    var methodName = change.Identifier.Text;
+                    foreach (var moved in insertedMethods.Where(method => method.Identifier.Text == methodName))
+                    {
+                        yield return Diff3.Compare(ancestor, moved, change);
+                    }
+                }
+            }
+        }
+
+        //A move looks like a deleted method and then an added method in another place, this find the added methods
+        private static List<MethodDeclarationSyntax> GetInsertedMethods(List<Diff> diffs)
+        {
+            return diffs
+                     .Where(diff => string.IsNullOrWhiteSpace(diff.Ancestor.Text))
+                     .Select(diff => diff.Changed.Node as MethodDeclarationSyntax)
+                     .Where(node => node != null).ToList();
         }
 
         /// <summary>
@@ -37,7 +98,8 @@ namespace SemDiff.Core
             var file = Path.GetFullPath(filePath);
             if (file.StartsWith(local))
             {
-                return file.Substring(local.Length);
+                var relative = file.Substring(local.Length);
+                return relative.StartsWith(Path.DirectorySeparatorChar.ToString()) ? relative.Substring(1) : relative;
             }
             else
             {
@@ -45,14 +107,9 @@ namespace SemDiff.Core
             }
         }
 
-        internal static IEnumerable<Tuple<RemoteFile, RemoteChanges>> GetPulls(Repo repo, string lookForFile)
+        internal static IEnumerable<Tuple<RemoteFile, RemoteChanges>> GetPulls(Repo repo, string relativePath)
         {
-            var relativePath = GetRelativePath(repo.LocalDirectory, lookForFile);
-            if (string.IsNullOrWhiteSpace(relativePath))
-            {
-                return Enumerable.Empty<Tuple<RemoteFile, RemoteChanges>>();
-            }
-            return repo.GetRemoteChanges().SelectMany(p => p.Files.Select(f => new { n = f.Filename, f, p })).Where(a => a.n == relativePath).Select(a => Tuple.Create(a.f, a.p)).ToList();
+            return repo.RemoteChangesData.Select(kvp => kvp.Value).SelectMany(p => p.Files.Select(f => new { n = f.Filename, f, p })).Where(a => a.n == relativePath).Select(a => Tuple.Create(a.f, a.p)).ToList();
         }
     }
 }

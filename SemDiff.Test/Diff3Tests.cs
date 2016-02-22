@@ -8,7 +8,7 @@ using System.Linq;
 namespace SemDiff.Test
 {
     [TestClass]
-    public class Diff3Tests
+    public class Diff3Tests : TestBase
     {
         [TestMethod]
         public void CompareNoConflictTest()
