@@ -9,6 +9,13 @@ namespace SemDiff.Core
 {
     public static class Diff3
     {
+        /// <summary>
+        /// Perform 3-way diff, this is done by comparing the changes to local and remote. This may result in conflicts if the changes overlap
+        /// </summary>
+        /// <param name="ancestor">The version that both local and remote decended from</param>
+        /// <param name="local">One set of changes, the local and remote params can be swapped without changing the result</param>
+        /// <param name="remote">One set of changes, the local and remote params can be swapped without changing the result</param>
+        /// <returns></returns>
         public static Diff3Result Compare(SyntaxTree ancestor, SyntaxTree local, SyntaxTree remote)
         {
             var localChanges = Diff.Compare(ancestor, local).ToList();
@@ -19,6 +26,9 @@ namespace SemDiff.Core
                 Conflicts = GetConflicts(localChanges, remoteChanges),
                 Local = localChanges,
                 Remote = remoteChanges,
+                AncestorTree = ancestor,
+                LocalTree = local,
+                RemoteTree = remote,
             };
         }
 

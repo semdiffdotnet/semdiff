@@ -3,6 +3,7 @@ using SemDiff.Core.Configuration;
 using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Configuration;
 using System.IO;
@@ -63,7 +64,7 @@ namespace SemDiff.Core
         public string LocalDirectory { get; private set; }
         public GitHub GitHubApi { get; private set; }
         public DateTime LastUpdate { get; internal set; } = DateTime.MinValue; //Old date insures update first time
-        internal ImmutableDictionary<int, RemoteChanges> RemoteChangesData { get; private set; } = ImmutableDictionary<int, RemoteChanges>.Empty;
+        internal ImmutableDictionary<int, RemoteChanges> RemoteChangesData { get; set; } = ImmutableDictionary<int, RemoteChanges>.Empty;
 
         internal static Repo RepoFromConfig(string repoDir, string gitconfigPath)
         {
@@ -92,6 +93,12 @@ namespace SemDiff.Core
             _repoLookup.Clear();
         }
 
+        /// <summary>
+        /// Repo Constructor, also see the static Authentication flag
+        /// </summary>
+        /// <param name="directory">Path to the repo on disk (the one open in visual studio)</param>
+        /// <param name="owner">if repo is github.com/haroldhues/awesomeapp/ then haroldhues is the owner</param>
+        /// <param name="name">if repo is github.com/haroldhues/awesomeapp/ then awesomeapp is the name</param>
         internal Repo(string directory, string owner, string name)
         {
             if (Authentication)

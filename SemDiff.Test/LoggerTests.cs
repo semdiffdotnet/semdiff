@@ -5,7 +5,7 @@ using System;
 namespace SemDiff.Test
 {
     [TestClass]
-    public class LoggerTests
+    public class LoggerTests : TestBase
     {
         [TestMethod]
         public void LoggerMethodsTest()

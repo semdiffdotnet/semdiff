@@ -5,5 +5,8 @@
     /// </summary>
     public class DetectedFalsePositive
     {
+        public string LocalFile { get; internal set; }
+        public RemoteChanges RemoteChange { get; internal set; }
+        public RemoteFile RemoteFile { get; internal set; }
     }
 }

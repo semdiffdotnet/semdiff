@@ -150,7 +150,7 @@ namespace SemDiff.Core
             File.WriteAllText(dir, rawText);
         }
 
-        private static string GetPathInCache(string repofolder, int prNum, string path, bool isAncestor = false)
+        internal static string GetPathInCache(string repofolder, int prNum, string path, bool isAncestor = false)
         {
             var dir = Path.Combine(repofolder, $"{prNum}", path);
 
