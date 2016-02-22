@@ -1,4 +1,6 @@
-﻿using SemDiff.Core.Configuration;
+﻿using MoreLinq;
+using SemDiff.Core.Configuration;
+using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -7,6 +9,7 @@ using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace SemDiff.Core
 {
@@ -54,7 +57,7 @@ namespace SemDiff.Core
             }
         }
 
-        private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)\.git");
+        private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)");
 
         public string Owner { get; private set; }
         public string Name { get; private set; }
@@ -68,11 +71,16 @@ namespace SemDiff.Core
             var config = File.ReadAllText(gitconfigPath);
             var match = _gitHubUrl.Match(config);
             if (!match.Success)
-                throw new NotImplementedException("Git repo doesn't seem to be a GitHub repository");
+                throw new GitHubUrlNotFoundException(path: repoDir);
 
-            var url = match.Value;
-            var owner = match.Groups[3].Value;
-            var name = match.Groups[4].Value;
+            var url = match.Value.Trim();
+            var owner = match.Groups[3].Value.Trim();
+            var name = match.Groups[4].Value.Trim();
+
+            if (name.EndsWith(".git"))
+            {
+                name = name.Substring(0, name.Length - 4);
+            }
             Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
             return new Repo(repoDir, owner, name);
         }
@@ -95,8 +103,8 @@ namespace SemDiff.Core
         {
             if (Authentication)
             {
-                string authToken = gitHubConfig.AuthenicationToken;
-                string authUsername = gitHubConfig.Username;
+                var authToken = gitHubConfig.AuthenicationToken;
+                var authUsername = gitHubConfig.Username;
                 GitHubApi = new GitHub(owner, name, authUsername, authToken);
             }
             else
@@ -109,23 +117,28 @@ namespace SemDiff.Core
         }
 
         /// <summary>
-        /// Gets Pull Requests and the master branch if it has been modified
+        /// Gets Pull Requests and the master branch if it has been modified, this method also insures that we don't update more than MaxUpdateInterval
         /// </summary>
-        /// <returns></returns>
-        public IEnumerable<RemoteChanges> GetRemoteChanges()
+        public async Task UpdateRemoteChangesAsync()
         {
             var elapsedSinceUpdate = (DateTime.Now - LastUpdate);
             if (elapsedSinceUpdate > MaxUpdateInterval)
             {
-                RemoteChangesData.Clear();
-                var pulls = GitHubApi.GetPullRequests().Result;
+                //TODO: Need a lock around this block so that if this method is called concurrently twice it will only make requests once.
+
+                //Many Changes will be made to the Immutable Dictionary so we will use the builder interface
+                var remChanges = RemoteChangesData.ToBuilder();
+
+                var pulls = await GitHubApi.GetPullRequestsAsync();
                 foreach (var p in pulls)
                 {
-                    RemoteChangesData.Add(p.Number, p.ToRemoteChanges(GitHubApi.RepoFolder));
+                    remChanges.Add(p.Number, p.ToRemoteChanges(GitHubApi.RepoFolder));
                 }
+
+                //Update our RemoteChangesData referace to new data
+                RemoteChangesData = remChanges.ToImmutable();
                 LastUpdate = DateTime.Now;
             }
-            return RemoteChangesData.Values;
         }
     }
 }

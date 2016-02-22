@@ -2,7 +2,7 @@
 
 namespace SemDiff.Core
 {
-    public class RemoteFile //TODO: Abstract to File system
+    public class RemoteFile
     {
         /// <summary>
         /// The ancestor that the pull request will be merged with

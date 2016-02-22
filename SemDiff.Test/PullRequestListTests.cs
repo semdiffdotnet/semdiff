@@ -1,7 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SemDiff.Core;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -18,7 +17,7 @@ namespace SemDiff.Test
         public void TestInit()
         {
             github = new GitHub(owner, repository);
-            github.UpdateLimit().Wait();
+            github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
             if (new FileInfo(appDataFolder).Exists)
                 Directory.Delete(appDataFolder, recursive: true);
@@ -38,7 +37,7 @@ namespace SemDiff.Test
             {
                 Assert.Inconclusive("Thou hast ran out of requests");
             }
-            var requests = github.GetPullRequests().Result;
+            var requests = github.GetPullRequestsAsync().Result;
             Assert.AreEqual(4, requests.Count);
             var r = requests.First();
             if (r.Number == 4)
@@ -66,18 +65,18 @@ namespace SemDiff.Test
             {
                 Assert.Inconclusive("Thou hast ran out of requests");
             }
-            var requests = github.GetPullRequests().Result;
+            var requests = github.GetPullRequestsAsync().Result;
             var fourWasFound = false;
             foreach (var r in requests)
             {
-                github.DownloadFiles(r);
+                github.DownloadFilesAsync(r).Wait();
                 if (r.Number == 4)
                 {
                     fourWasFound = true;
                     string line;
-                    int counter = 0;
+                    var counter = 0;
                     string[] directoryTokens;
-                    string dir = "";
+                    var dir = "";
                     foreach (var f in r.Files)
                     {
                         directoryTokens = f.Filename.Split('/');

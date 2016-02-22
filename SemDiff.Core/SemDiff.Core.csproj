@@ -135,7 +135,12 @@
     <Compile Include="DetectedFalsePositive.cs" />
     <Compile Include="Diagnostics.cs" />
     <Compile Include="Diff3Result.cs" />
+    <Compile Include="Exceptions\GitHubUnknownErrorException.cs" />
+    <Compile Include="Exceptions\GitHubAuthenticationFailureException.cs" />
     <Compile Include="GitHubConfiguration.cs" />
+    <Compile Include="Exceptions\GitHubRateLimitExceededException.cs" />
+    <Compile Include="Exceptions\GitHubDeserializationException.cs" />
+    <Compile Include="Exceptions\GitHubUrlNotFoundException.cs" />
     <Compile Include="RemoteFile.cs" />
     <Compile Include="Conflict.cs" />
     <Compile Include="SemDiffAnalyzer.cs" />

@@ -19,7 +19,8 @@ namespace SemDiff.Test
         [TestMethod]
         public void RepoGetChangedFiles()
         {
-            var pulls = CurlyBroccoli.GetRemoteChanges().ToList();
+            CurlyBroccoli.UpdateRemoteChangesAsync().Wait();
+            var pulls = CurlyBroccoli.RemoteChangesData.Values.ToList();
             Assert.AreEqual(4, pulls.Count);
             foreach (var p in pulls)
             {

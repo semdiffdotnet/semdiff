@@ -16,30 +16,6 @@ namespace SemDiff.Core
         {
         }
 
-        //Looks for changes in whitespace so that change is not added to the conflict list
-        public bool IsWhiteSpaceChange
-        {
-            get
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        //Looks for changes in comments so that change is not added to the conflict list
-        public bool IsNonCodeChange
-        {
-            get
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        //TODO: Determine if this kind of function is nessasary
-        public IEnumerable<Conflict> Split(int ancestorIndex, int localIndex, int remoteIndex)
-        {
-            throw new NotImplementedException();
-        }
-
         internal static Conflict Create(List<DiffWithOrigin> potentialConflict)
         {
             var local = potentialConflict.Where(c => c.Origin == DiffWithOrigin.OriginEnum.Local).Select(c => c.Diff).ToList();

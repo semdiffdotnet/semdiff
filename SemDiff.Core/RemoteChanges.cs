@@ -6,7 +6,7 @@ namespace SemDiff.Core
     /// <summary>
     /// Represents Pull Requests
     /// </summary>
-    public class RemoteChanges //TODO: Abstract to File system
+    public class RemoteChanges
     {
         public string Title { get; set; }
         public IEnumerable<RemoteFile> Files { get; set; }

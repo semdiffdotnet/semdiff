@@ -1,7 +1,11 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
+using SemDiff.Core.Exceptions;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SemDiff.Core
 {
@@ -13,30 +17,73 @@ namespace SemDiff.Core
         //Called once per solution, to provide us an oportunity to assign callbacks
         public override void Initialize(AnalysisContext context)
         {
-            context.RegisterSyntaxTreeAction(OnSyntaxTree);
             context.RegisterSemanticModelAction(OnSemanticModel);
         }
 
-        private static void OnSyntaxTree(SyntaxTreeAnalysisContext context)
+        /// <summary>
+        /// A call back set in initialize that is called when ever a file is compiled
+        /// </summary>
+        /// <param name="context">context provided by roslyn that contains the SyntaxTree, SemanticModel, FilePath, etc.</param>
+        private static void OnSemanticModel(SemanticModelAnalysisContext context)
         {
-            var filePath = context.Tree.FilePath;
-            var repo = Repo.GetRepoFor(filePath);
-            if (repo != null)
+            var semanticModel = context.SemanticModel;
+            //This should be only blocking call in this project, this is needed because Roslyn
+            //does *not* provide a way to assign a callback that returns Task
+            var diags = AnalyzeAsync(semanticModel).Result;
+
+            foreach (var d in diags)
             {
-                var fps = Analysis.ForFalsePositive(repo, context.Tree, filePath);
-                Diagnostics.Report(fps, context.ReportDiagnostic);
+                context.ReportDiagnostic(d);
             }
         }
 
-        private static void OnSemanticModel(SemanticModelAnalysisContext context)
+        private static async Task<IEnumerable<Diagnostic>> AnalyzeAsync(SemanticModel semanticModel)
         {
-            var filePath = context.SemanticModel.SyntaxTree.FilePath;
-            var repo = Repo.GetRepoFor(filePath);
-            if (repo != null)
+            var diags = Enumerable.Empty<Diagnostic>();
+            try
             {
-                var fns = Analysis.ForFalseNegative(repo, context.SemanticModel);
-                Diagnostics.Report(fns, context.ReportDiagnostic);
+                var filePath = semanticModel.SyntaxTree.FilePath;
+                var repo = Repo.GetRepoFor(filePath);
+                if (repo != null)
+                {
+                    await repo.UpdateRemoteChangesAsync();
+                    var fps = Analysis.ForFalsePositive(repo, semanticModel.SyntaxTree, filePath);
+                    var fns = Analysis.ForFalseNegative(repo, semanticModel);
+                    diags = fns.Select(Diagnostics.Convert).Concat(fns.Select(Diagnostics.Convert));
+                }
             }
+            catch (GitHubAuthenticationFailureException ex)
+            {
+                diags = new[] { Diagnostics.AuthenticationFailure() };
+                Logger.Error(ex.Message);
+            }
+            catch (GitHubRateLimitExceededException ex)
+            {
+                diags = new[] { Diagnostics.RateLimit() };
+                Logger.Error(ex.Message);
+            }
+            catch (GitHubUrlNotFoundException ex)
+            {
+                diags = new[] { Diagnostics.NotGitHubRepo(ex.Message) };
+                Logger.Error(ex.Message);
+            }
+            catch (GitHubUnknownErrorException ex)
+            {
+                diags = new[] { Diagnostics.UnexpectedError("Communicating with GitHub") };
+                Logger.Error(ex.Message);
+            }
+            catch (GitHubDeserializationException ex)
+            {
+                diags = new[] { Diagnostics.UnexpectedError("Deserializing Data") };
+                Logger.Error(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                diags = new[] { Diagnostics.UnexpectedError("Performing Analysis") };
+                Logger.Error($"Unhandled Exception: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
+            }
+
+            return diags;
         }
     }
 }

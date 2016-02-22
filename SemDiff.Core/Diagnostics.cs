@@ -1,8 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Threading;
 
 namespace SemDiff.Core
 {
@@ -47,17 +45,58 @@ namespace SemDiff.Core
         /// <summary>
         /// Converts `DetectedFalseNegative`s to Diagnostics (the class provided by Roslyn) and sends them to the function provided
         /// </summary>
-        public static void Report(IEnumerable<DetectedFalseNegative> fps, Action<Diagnostic> reporter)
+        /// <param name="fps">todo: describe fps parameter on Convert</param>
+        public static Diagnostic Convert(DetectedFalseNegative fps)
         {
-            reporter(Diagnostic.Create(FalseNegative, Location.None, "FileName", @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33"));
+            //TODO: NotImplimented
+            return Diagnostic.Create(FalseNegative, Location.None, "FileName", @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33");
         }
 
         /// <summary>
         /// Converts `DetectedFalsePositive`s to Diagnostics (the class provided by Roslyn) and sends them to the function provided
         /// </summary>
-        public static void Report(IEnumerable<DetectedFalsePositive> fps, Action<Diagnostic> reporter)
+        /// <param name="fps">todo: describe fps parameter on Convert</param>
+        public static Diagnostic Convert(DetectedFalsePositive fps)
         {
-            reporter(Diagnostic.Create(FalsePositive, Location.None, @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33"));
+            //TODO: NotImplimented
+            return Diagnostic.Create(FalsePositive, Location.None, @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33");
+        }
+
+        /// <summary>
+        /// Returns a diagnostic that represents a message that a repo was found but could a github url was not found.
+        /// </summary>
+        /// <param name="message">The exception message that should contain the path</param>
+        /// <returns></returns>
+        internal static Diagnostic NotGitHubRepo(string message)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Returns a diagnostic that represents a friendly message that the rate limit has been exceeded and a link to our documention.
+        /// </summary>
+        /// <returns></returns>
+        internal static Diagnostic RateLimit()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Returns a Diagnostic that represents authentication failure
+        /// </summary>
+        public static Diagnostic AuthenticationFailure()
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Should create a diagnostic that represents something like this: Unexpected Error Occured while ((verbNounPhrase))
+        /// </summary>
+        /// <param name="verbNounPhrase">Something like: Washing the Car, Mowing the Lawn, or Burning out a Fuze up here Alone</param>
+        /// <returns></returns>
+        internal static Diagnostic UnexpectedError(string verbNounPhrase)
+        {
+            throw new NotImplementedException();
         }
     }
 }
