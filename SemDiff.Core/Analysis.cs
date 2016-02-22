@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System;
 using System.Collections.Generic;
@@ -18,7 +19,39 @@ namespace SemDiff.Core
         public static IEnumerable<DetectedFalsePositive> ForFalsePositive(Repo repo, SyntaxTree tree, string filePath)
         {
             var pulls = GetPulls(repo, filePath);
+            foreach (var fp in pulls)
+            {
+                var f = fp.Item1;
+                var p = fp.Item2;
+
+                var conflicts = Diff3.Compare(f.Base, tree, f.File);
+                var locs = GetRemovedMethods(conflicts.Local);
+                var rems = GetRemovedMethods(conflicts.Remote);
+                foreach (var c in conflicts.Conflicts.Where(con => con.Ancestor.Node is MethodDeclarationSyntax))
+                {
+                    var orig = (MethodDeclarationSyntax)c.Ancestor.Node;
+                    if (orig != null && c.Local.Span.Length == 0)
+                    {
+                        var changed = c.Remote.Node as MethodDeclarationSyntax;
+                        var methodName = changed.Identifier.Text;
+                        if (changed != null)
+                        {
+                            foreach (var loc in locs.Where(method => method.Identifier.Text == methodName))
+                            {
+                            }
+                        }
+                    }
+                }
+            }
             throw new NotImplementedException();
+        }
+
+        private static List<MethodDeclarationSyntax> GetRemovedMethods(List<Diff> diffs)
+        {
+            return diffs
+                     .Where(diff => string.IsNullOrWhiteSpace(diff.Ancestor.Text))
+                     .Select(diff => diff.Changed.Node as MethodDeclarationSyntax)
+                     .Where(node => node != null).ToList();
         }
 
         /// <summary>
@@ -37,7 +70,8 @@ namespace SemDiff.Core
             var file = Path.GetFullPath(filePath);
             if (file.StartsWith(local))
             {
-                return file.Substring(local.Length);
+                var relative = file.Substring(local.Length);
+                return relative.StartsWith(Path.DirectorySeparatorChar.ToString()) ? relative.Substring(1) : relative;
             }
             else
             {
@@ -52,7 +86,7 @@ namespace SemDiff.Core
             {
                 return Enumerable.Empty<Tuple<RemoteFile, RemoteChanges>>();
             }
-            return repo.GetRemoteChanges().SelectMany(p => p.Files.Select(f => new { n = f.Filename, f, p })).Where(a => a.n == relativePath).Select(a => Tuple.Create(a.f, a.p)).ToList();
+            return repo.RemoteChangesData.Select(kvp => kvp.Value).SelectMany(p => p.Files.Select(f => new { n = f.Filename, f, p })).Where(a => a.n == relativePath).Select(a => Tuple.Create(a.f, a.p)).ToList();
         }
     }
 }

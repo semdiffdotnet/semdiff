@@ -138,10 +138,12 @@
     <Compile Include="GitHubAuthTests.cs" />
     <Compile Include="LoggerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="PullRequestListTest.cs" />
+    <Compile Include="PullRequestListTests.cs" />
     <Compile Include="Diff3Tests.cs" />
     <Compile Include="GetRepoTests.cs" />
     <Compile Include="RepoTests.cs" />
+    <Compile Include="FalsePositiveAnalysisTests.cs" />
+    <Compile Include="TestBase.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SemDiff.Core\SemDiff.Core.csproj">

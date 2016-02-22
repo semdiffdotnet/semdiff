@@ -8,7 +8,7 @@ using System.Linq;
 namespace SemDiff.Test
 {
     [TestClass]
-    public class PullRequestListTest
+    public class PullRequestListTests : TestBase
     {
         private const string owner = "semdiffdotnet";
         private const string repository = "curly-broccoli";

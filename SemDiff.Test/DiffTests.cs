@@ -5,7 +5,7 @@ using System.Linq;
 namespace SemDiff.Test
 {
     [TestClass]
-    public class DiffTests
+    public class DiffTests : TestBase
     {
         [TestMethod]
         public void GetChangesNotChangedTest()

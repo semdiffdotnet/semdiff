@@ -9,7 +9,7 @@
     using System.Threading.Tasks;
 
     [TestClass]
-    public class GitHubAuthTest
+    public class GitHubAuthTest : TestBase
     {
         private string owner = "semdiffdotnet";
         private string repository = "curly-broccoli";

@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 namespace SemDiff.Test
 {
     [TestClass]
-    public class GetRepoTests
+    public class GetRepoTests : TestBase
     {
         [TestMethod]
         public void RepoFromConfigTest()
