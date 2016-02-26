@@ -71,7 +71,10 @@ namespace SemDiff.Core
             var config = File.ReadAllText(gitconfigPath);
             var match = _gitHubUrl.Match(config);
             if (!match.Success)
+            {
+                Logger.Error(nameof(GitHubUrlNotFoundException));
                 throw new GitHubUrlNotFoundException(path: repoDir);
+            }
 
             var url = match.Value.Trim();
             var owner = match.Groups[3].Value.Trim();

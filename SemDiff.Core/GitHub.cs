@@ -87,8 +87,12 @@ namespace SemDiff.Core
                 switch (response.StatusCode)
                 {
                     case HttpStatusCode.Unauthorized:
+                        var unauth = await response.Content.ReadAsStringAsync();
+                        var unauthorizedError = DeserializeWithErrorHandling<GitHubError>(unauth);
+                        Logger.Error($"{nameof(GitHubUnknownErrorException)}: {unauthorizedError.Message}");
                         throw new GitHubAuthenticationFailureException();
                     case HttpStatusCode.Forbidden:
+                        Logger.Error(nameof(GitHubUnknownErrorException));
                         throw new GitHubRateLimitExceededException();
                     default:
                         var str = await response.Content.ReadAsStringAsync();
@@ -170,6 +174,7 @@ namespace SemDiff.Core
             }
             catch (Exception ex)
             {
+                Logger.Error($"{nameof(GitHubDeserializationException)}: {ex.Message}");
                 throw new GitHubDeserializationException(ex);
             }
         }
@@ -184,6 +189,9 @@ namespace SemDiff.Core
             [JsonProperty("updated_at")]
             public DateTime Updated { get; set; }
 
+            [JsonProperty("html_url")]
+            public string Url { get; set; }
+
             public User User { get; set; }
             public HeadBase Head { get; set; }
             public HeadBase Base { get; set; }
@@ -195,6 +203,7 @@ namespace SemDiff.Core
                 {
                     Date = Updated,
                     Title = Title,
+                    Url = Url,
                     Files = Files.Where(f => f.Status == GitHub.Files.StatusEnum.Modified).Where(f => f.Filename.Split('.').Last() == "cs").Select(f => f.ToRemoteFile(repofolder, Number)).ToList(),
                 };
             }
@@ -243,13 +252,14 @@ namespace SemDiff.Core
 
         internal class GitHubError
         {
-            private string Message { get; set; }
+            public string Message { get; set; }
 
             [JsonProperty("documentation_url")]
-            private string DocumentationUrl { get; set; }
+            public string DocumentationUrl { get; set; }
 
             internal Exception ToException()
             {
+                Logger.Error($"{nameof(GitHubUnknownErrorException)}: {Message}");
                 return new GitHubUnknownErrorException(
                         string.IsNullOrWhiteSpace(DocumentationUrl)
                         ? Message
