@@ -19,8 +19,9 @@ namespace SemDiff.Core
     /// </summary>
     public class GitHub
     {
-        public GitHub(string repoOwner, string repoName)
+        public GitHub(string repoOwner, string repoName, string authUsername = null, string authToken = null)
         {
+            Logger.Info($"{nameof(GitHub)}: {authUsername}:{authToken} for {repoOwner}\\{repoName}");
             RepoOwner = repoOwner;
             RepoName = repoName;
 
@@ -32,13 +33,13 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
             RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
-        }
 
-        public GitHub(string repoOwner, string repoName, string authUsername, string authToken) : this(repoOwner, repoName)
-        {
-            AuthUsername = authUsername;
-            AuthToken = authToken;
-            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
+            if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
+            {
+                AuthUsername = authUsername;
+                AuthToken = authToken;
+                Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
+            }
         }
 
         public string AuthToken { get; set; }
@@ -89,10 +90,12 @@ namespace SemDiff.Core
                     case HttpStatusCode.Unauthorized:
                         var unauth = await response.Content.ReadAsStringAsync();
                         var unauthorizedError = DeserializeWithErrorHandling<GitHubError>(unauth);
-                        Logger.Error($"{nameof(GitHubUnknownErrorException)}: {unauthorizedError.Message}");
+                        Logger.Error($"{nameof(GitHubAuthenticationFailureException)}: {unauthorizedError.Message}");
                         throw new GitHubAuthenticationFailureException();
                     case HttpStatusCode.Forbidden:
-                        Logger.Error(nameof(GitHubUnknownErrorException));
+                        var forbid = await response.Content.ReadAsStringAsync();
+                        var forbidError = DeserializeWithErrorHandling<GitHubError>(forbid);
+                        Logger.Error($"{nameof(GitHubRateLimitExceededException)}: {forbidError.Message}");
                         throw new GitHubRateLimitExceededException();
                     default:
                         var str = await response.Content.ReadAsStringAsync();
@@ -133,6 +136,7 @@ namespace SemDiff.Core
                     {
                         case Files.StatusEnum.Added:
                         case Files.StatusEnum.Removed:
+                        case Files.StatusEnum.Renamed: //Not sure how to handle this one...
                             break;
 
                         case Files.StatusEnum.Modified:
@@ -235,6 +239,7 @@ namespace SemDiff.Core
                 Added,
                 Modified,
                 Removed,
+                Renamed
             }
         }
 
