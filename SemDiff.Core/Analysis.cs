@@ -88,7 +88,7 @@ namespace SemDiff.Core
                     foreach (var moved in insertedMethods.Where(method => method.Identifier.Text == methodName))
                     {
                         var diffRes = Diff3.Compare(ancestor, moved, change);
-                        if (diffRes.Conflicts.Any())
+                        if (!diffRes.Conflicts.Any())
                         {
                             yield return Tuple.Create(change, moved, diffRes);
                         }
@@ -111,6 +111,7 @@ namespace SemDiff.Core
         /// </summary>
         public static IEnumerable<DetectedFalseNegative> ForFalseNegative(Repo repo, SemanticModel semanticModel)
         {
+            yield break;
             var baseClassPath = ""; //TODO: find using semantic model
             var pulls = GetPulls(repo, baseClassPath);
             throw new NotImplementedException();
