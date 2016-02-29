@@ -24,7 +24,7 @@ namespace SemDiff.Core
             Logger.Info($"{nameof(GitHub)}: {authUsername}:{authToken} for {repoOwner}\\{repoName}");
             RepoOwner = repoOwner;
             RepoName = repoName;
-
+            EtagNoChanges = null;
             Client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate })
             {
                 BaseAddress = new Uri("https://api.github.com/")
@@ -50,6 +50,7 @@ namespace SemDiff.Core
         public int RequestsLimit { get; private set; }
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
+        public string EtagNoChanges { get; set; }
 
         /// <summary>
         /// Makes a request to github to update RequestsRemaining and RequestsLimit
@@ -64,15 +65,19 @@ namespace SemDiff.Core
         /// </summary>
         /// <param name="url">relative url to the requested resource</param>
         /// <typeparam name="T">Type the request is expected to contain</typeparam>
-        private async Task<T> HttpGetAsync<T>(string url)
+        private async Task<T> HttpGetAsync<T>(string url) where T : class
         {
             var content = await HttpGetAsync(url);
+            if (content == null)
+                return null;
             return DeserializeWithErrorHandling<T>(content);
         }
 
         private async Task<string> HttpGetAsync(string url)
         {
             //Request, but retry once waiting 5 minutes
+            if(EtagNoChanges != null)
+                Client.DefaultRequestHeaders.Add("If-None-Match", EtagNoChanges);
             var response = await Extensions.RetryOnceAsync(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
             IEnumerable<string> headerVal;
             if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
@@ -82,6 +87,10 @@ namespace SemDiff.Core
             if (response.Headers.TryGetValues("X-RateLimit-Remaining", out headerVal))
             {
                 RequestsRemaining = int.Parse(headerVal.Single());
+            }
+            if (response.Headers.TryGetValues("ETag", out headerVal))
+            {
+                EtagNoChanges = headerVal.Single();
             }
             if (!response.IsSuccessStatusCode)
             {
@@ -97,6 +106,9 @@ namespace SemDiff.Core
                         var forbidError = DeserializeWithErrorHandling<GitHubError>(forbid);
                         Logger.Error($"{nameof(GitHubRateLimitExceededException)}: {forbidError.Message}");
                         throw new GitHubRateLimitExceededException();
+                    case HttpStatusCode.NotModified:
+                        //Returns null because we have nothing to update if nothing was modified
+                        return null;
                     default:
                         var str = await response.Content.ReadAsStringAsync();
                         var error = DeserializeWithErrorHandling<GitHubError>(str);
@@ -111,7 +123,10 @@ namespace SemDiff.Core
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
             var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
             var pullRequests = await HttpGetAsync<IList<PullRequest>>(url);
-
+            if(pullRequests == null)
+            {
+                return null;
+            }
             return await Task.WhenAll(pullRequests.Select(async pr =>
             {
                 var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
