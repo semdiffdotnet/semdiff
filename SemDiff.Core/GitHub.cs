@@ -23,7 +23,7 @@ namespace SemDiff.Core
         {
             RepoOwner = repoOwner;
             RepoName = repoName;
-            Etag = null;
+            EtagNoChanges = null;
             Client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate })
             {
                 BaseAddress = new Uri("https://api.github.com/")
@@ -49,7 +49,7 @@ namespace SemDiff.Core
         public int RequestsLimit { get; private set; }
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
-        public string Etag { get; set; }
+        public string EtagNoChanges { get; set; }
 
         /// <summary>
         /// Makes a request to github to update RequestsRemaining and RequestsLimit
@@ -75,8 +75,8 @@ namespace SemDiff.Core
         private async Task<string> HttpGetAsync(string url)
         {
             //Request, but retry once waiting 5 minutes
-            if(Etag != null)
-                Client.DefaultRequestHeaders.Add("If-None-Match", Etag);
+            if(EtagNoChanges != null)
+                Client.DefaultRequestHeaders.Add("If-None-Match", EtagNoChanges);
             var response = await Extensions.RetryOnceAsync(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
             IEnumerable<string> headerVal;
             if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
@@ -89,7 +89,7 @@ namespace SemDiff.Core
             }
             if (response.Headers.TryGetValues("ETag", out headerVal))
             {
-                Etag = headerVal.Single();
+                EtagNoChanges = headerVal.Single();
             }
             string status = "";
             if (response.Headers.TryGetValues("Status", out headerVal))
