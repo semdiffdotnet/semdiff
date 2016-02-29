@@ -57,7 +57,16 @@ namespace SemDiff.Test
             }
             Assert.AreEqual("895d2ca038344aacfbcf3902e978de73a7a763fe", r.Head.Sha);
         }
-
+        [TestMethod]
+        public void EtagNotModified()
+        {
+            if (github.RequestsRemaining == 0)
+            {
+                Assert.Inconclusive("Thou hast ran out of requests");
+            }
+            var requests = github.GetPullRequestsAsync().Result;
+            requests = github.GetPullRequestsAsync().Result;
+        }
         [TestMethod]
         public void GetFilesFromGitHub()
         {
