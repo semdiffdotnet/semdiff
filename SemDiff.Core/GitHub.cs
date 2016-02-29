@@ -91,11 +91,6 @@ namespace SemDiff.Core
             {
                 EtagNoChanges = headerVal.Single();
             }
-            string status = "";
-            if (response.Headers.TryGetValues("Status", out headerVal))
-            {
-                status = headerVal.Single();
-            }
             if (!response.IsSuccessStatusCode)
             {
                 switch (response.StatusCode)
@@ -105,6 +100,7 @@ namespace SemDiff.Core
                     case HttpStatusCode.Forbidden:
                         throw new GitHubRateLimitExceededException();
                     case HttpStatusCode.NotModified:
+                        //Returns null because we have nothing to update if nothing was modified
                         return null;
                     default:
                         var str = await response.Content.ReadAsStringAsync();
