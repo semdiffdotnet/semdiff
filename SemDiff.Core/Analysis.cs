@@ -3,8 +3,10 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SemDiff.Core
 {
@@ -111,10 +113,37 @@ namespace SemDiff.Core
         /// </summary>
         public static IEnumerable<DetectedFalseNegative> ForFalseNegative(Repo repo, SemanticModel semanticModel)
         {
-            yield break;
-            var baseClassPath = ""; //TODO: find using semantic model
-            var pulls = GetPulls(repo, baseClassPath);
-            throw new NotImplementedException();
+            var classDeclarations = semanticModel.SyntaxTree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().ToList();
+            var declaredSymbol = classDeclarations.Select(cds => semanticModel.GetDeclaredSymbol(cds)).ToList();
+            var classBases = declaredSymbol.SelectMany(t => (t as INamedTypeSymbol)?.BaseType?.DeclaringSyntaxReferences ?? Enumerable.Empty<SyntaxReference>()).ToList();
+            var classBaseNodes = Task.WhenAll(classBases.Select(sr => sr.GetSyntaxAsync())).Result.OfType<ClassDeclarationSyntax>().ToList();
+            return classBaseNodes.SelectMany(c =>
+            {
+                var relativePath = GetRelativePath(repo.LocalDirectory, c.SyntaxTree.FilePath).Replace('\\', '/'); //Standardize Directory Separator!
+                return GetPulls(repo, relativePath).SelectMany(t =>
+                {
+                    var file = t.Item1;
+                    var remotechanges = t.Item2;
+
+                    var ancestorDecs = file.Base.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>();
+                    var remoteDecs = file.File.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().ToQueue();
+                    return ancestorDecs.Select(a =>
+                    {
+                        var r = remoteDecs.Dequeue();
+                        return Diff3.Compare(a, c, r);
+                    }).Where(dr => dr.Conflicts.Any())
+                      .Select(dr =>
+                      {
+                          return new DetectedFalseNegative
+                          {
+                              Location = Location.None,
+                              RemoteChange = remotechanges,
+                              RemoteFile = file,
+                              TypeName = c.Identifier.ToString(),
+                          };
+                      });
+                });
+            });
         }
 
         internal static string GetRelativePath(string localDirectory, string filePath)

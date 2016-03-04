@@ -144,6 +144,7 @@
     <Compile Include="RepoTests.cs" />
     <Compile Include="FalsePositiveAnalysisTests.cs" />
     <Compile Include="TestBase.cs" />
+    <Compile Include="FalseNegativeAnalysisTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SemDiff.Core\SemDiff.Core.csproj">
