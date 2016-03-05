@@ -23,7 +23,7 @@ namespace SemDiff.Core
 
             return new Diff3Result
             {
-                Conflicts = GetConflicts(localChanges, remoteChanges),
+                Conflicts = GetConflicts(localChanges, remoteChanges, ancestor, local, remote),
                 Local = localChanges,
                 Remote = remoteChanges,
                 AncestorTree = ancestor,
@@ -32,7 +32,7 @@ namespace SemDiff.Core
             };
         }
 
-        public static IEnumerable<Conflict> GetConflicts(IEnumerable<Diff> local, IEnumerable<Diff> remote)
+        public static IEnumerable<Conflict> GetConflicts(IEnumerable<Diff> local, IEnumerable<Diff> remote, SyntaxTree ancestorTree, SyntaxTree localTree, SyntaxTree remoteTree)
         {
             var localChanges = local.Select(DiffWithOrigin.Local).ToList();
             var remoteChanges = remote.Select(DiffWithOrigin.Remote).ToList();
@@ -51,7 +51,7 @@ namespace SemDiff.Core
                 while (changes.Count > 0 && Diff.Intersects(change.Diff, changes.Peek().Diff));
 
                 if (potentialConflict.Count >= 2)
-                    yield return Conflict.Create(potentialConflict);
+                    yield return Conflict.Create(potentialConflict, ancestorTree, localTree, remoteTree);
             }
             yield break;
         }

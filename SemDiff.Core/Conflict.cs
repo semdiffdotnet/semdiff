@@ -1,4 +1,5 @@
-﻿using MoreLinq;
+﻿using Microsoft.CodeAnalysis;
+using MoreLinq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,25 +17,41 @@ namespace SemDiff.Core
         {
         }
 
-        internal static Conflict Create(List<DiffWithOrigin> potentialConflict)
+        internal static Conflict Create(List<DiffWithOrigin> potentialConflict, SyntaxTree ancestorTree, SyntaxTree localTree, SyntaxTree remoteTree)
         {
-            var local = potentialConflict.Where(c => c.Origin == DiffWithOrigin.OriginEnum.Local).Select(c => c.Diff).ToList();
-            var firstLocal = local.MinBy(d => d.Changed.Span.Start);
-            var lastLocal = local.MaxBy(d => d.Changed.Span.End);
-            var remote = potentialConflict.Where(c => c.Origin == DiffWithOrigin.OriginEnum.Remote).Select(c => c.Diff).ToList();
-            var firstRemote = remote.MinBy(d => d.Changed.Span.Start);
-            var lastRemote = remote.MaxBy(d => d.Changed.Span.End);
+            var fllocal = FindStartEnd(potentialConflict.Where(c => c.Origin == DiffWithOrigin.OriginEnum.Local).Select(c => c.Diff));
+            var flremote = FindStartEnd(potentialConflict.Where(c => c.Origin == DiffWithOrigin.OriginEnum.Remote).Select(c => c.Diff));
 
-            var first = new[] { firstLocal, firstRemote }.MinBy(c => c.Ancestor.Span.Start);
-            var last = new[] { lastLocal, lastRemote }.MaxBy(c => c.Ancestor.Span.End);
+            var localStartOffset = fllocal.Item1.OffsetStart;
+            var localEndOffset = fllocal.Item2.OffsetEnd;
+
+            var remoteStartOffset = flremote.Item1.OffsetStart;
+            var remoteEndOffset = flremote.Item2.OffsetEnd;
+
+            var first = MinAncestorStart(fllocal.Item1, flremote.Item1).Ancestor.Span.Start;
+            var last = MaxAncestorEnd(fllocal.Item2, flremote.Item2).Ancestor.Span.End;
+
             var con = new Conflict
             {
-                Ancestor = SpanDetails.Create(first.Ancestor.Span.Start, last.Ancestor.Span.End, first.Ancestor.Tree),
-                Local = SpanDetails.Create(first.Ancestor.Span.Start + firstLocal.OffsetStart, last.Ancestor.Span.End + lastLocal.OffsetEnd, firstLocal.Changed.Tree),
-                Remote = SpanDetails.Create(first.Ancestor.Span.Start + firstRemote.OffsetStart, last.Ancestor.Span.End + lastRemote.OffsetEnd, firstRemote.Changed.Tree)
+                Ancestor = SpanDetails.Create(first, last, ancestorTree),
+                Local = SpanDetails.Create(first + localStartOffset, last + localEndOffset, localTree),
+                Remote = SpanDetails.Create(first + remoteStartOffset, last + remoteEndOffset, remoteTree)
             };
             Logger.Debug($"Conflict: {con}");
             return con;
+        }
+
+        private static Diff MinAncestorStart(Diff d1, Diff d2) => d1.Ancestor.Span.Start <= d2.Ancestor.Span.Start ? d1 : d2;
+
+        private static Diff MaxAncestorEnd(Diff d1, Diff d2) => d1.Ancestor.Span.End >= d2.Ancestor.Span.End ? d1 : d2;
+
+        private static Tuple<Diff, Diff> FindStartEnd(IEnumerable<Diff> inp)
+        {
+            var local = inp.ToList();
+            var firstLocal = local.MinBy(d => d.Changed.Span.Start);
+            var lastLocal = local.MaxBy(d => d.Changed.Span.End);
+            var fllocal = Tuple.Create(firstLocal, lastLocal);
+            return fllocal;
         }
 
         public override string ToString()
