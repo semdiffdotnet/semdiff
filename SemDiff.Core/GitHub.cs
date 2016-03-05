@@ -182,7 +182,7 @@ namespace SemDiff.Core
 
         internal static string GetPathInCache(string repofolder, int prNum, string path, bool isAncestor = false)
         {
-            var dir = Path.Combine(repofolder, $"{prNum}", path);
+            var dir = Path.Combine(repofolder, $"{prNum}", path.Replace('/', '\\'));
 
             if (isAncestor)
             {
