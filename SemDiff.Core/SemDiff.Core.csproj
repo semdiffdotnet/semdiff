@@ -141,6 +141,7 @@
     <Compile Include="Exceptions\GitHubRateLimitExceededException.cs" />
     <Compile Include="Exceptions\GitHubDeserializationException.cs" />
     <Compile Include="Exceptions\GitHubUrlNotFoundException.cs" />
+    <Compile Include="Ref.cs" />
     <Compile Include="RemoteFile.cs" />
     <Compile Include="Conflict.cs" />
     <Compile Include="SemDiffAnalyzer.cs" />
