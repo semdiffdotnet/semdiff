@@ -1,7 +1,9 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace SemDiff.Core
 {
@@ -24,6 +26,44 @@ namespace SemDiff.Core
             var end2 = diff2.Ancestor.Span.End;
             return (start2 <= start1 && start1 <= end2) || (start1 <= start2 && start2 <= end1); //true if start of one is within start of the other (inclusive)
         }
+
+        /// <summary>
+        /// Get a string that represents the differences in the file in a way that is readable
+        /// </summary>
+        /// <param name="ancestor">SyntaxTree that changed was modified from</param>
+        /// <param name="changed">SyntaxTree that contains the changes</param>
+        /// <returns>a string that can be inspected to see the changes</returns>
+        public static string VisualDiff(SyntaxTree ancestor, SyntaxTree changed)
+        {
+            var diffs = Compare(ancestor, changed);
+            return VisualDiff(diffs, ancestor);
+        }
+
+        /// <summary>
+        /// Get a string that represents the differences in the file in a way that is readable
+        /// </summary>
+        /// <param name="ancestor">SyntaxTree that changed was modified from</param>
+        /// <param name="diffs">all the changes to the ancestor</param>
+        /// <returns>a string that can be inspected to see the changes</returns>
+        public static string VisualDiff(IEnumerable<Diff> diffs, SyntaxTree ancestor)
+        {
+            var builder = new StringBuilder();
+            var currentAncestorPos = 0;
+            foreach (var d in diffs)
+            {
+                var dStart = d.Ancestor.Span.Start;
+                if (dStart > currentAncestorPos)
+                {
+                    builder.Append(ancestor.GetText().ToString(TextSpan.FromBounds(currentAncestorPos, dStart)));
+                }
+                builder.Append(d);
+                currentAncestorPos = d.Ancestor.Span.End;
+            }
+            builder.Append(ancestor.GetText().ToString(TextSpan.FromBounds(currentAncestorPos, ancestor.Length)));
+            return builder.ToString();
+        }
+
+        internal static bool IntersectsAny(Diff diff, IEnumerable<Diff> diffs) => diffs.Any(d => Intersects(diff, d));
 
         public static IEnumerable<Diff> Compare(SyntaxTree ancestor, SyntaxTree changed)
         {
@@ -48,7 +88,7 @@ namespace SemDiff.Core
 
         public override string ToString()
         {
-            return $"<<{Ancestor.Text}||{Changed.Text}>>";
+            return $"<<<<<<<{Ancestor.Text}|||||||{Changed.Text}>>>>>>>";
         }
     }
 }

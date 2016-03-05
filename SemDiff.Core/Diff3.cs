@@ -42,13 +42,12 @@ namespace SemDiff.Core
             while (changes.Count > 0)
             {
                 potentialConflict.Clear();
-                DiffWithOrigin change;
                 do
                 {
-                    change = changes.Dequeue();
+                    var change = changes.Dequeue();
                     potentialConflict.Add(change);
                 }
-                while (changes.Count > 0 && Diff.Intersects(change.Diff, changes.Peek().Diff));
+                while (changes.Count > 0 && Diff.IntersectsAny(changes.Peek().Diff, potentialConflict.Select(dwo => dwo.Diff)));
 
                 if (potentialConflict.Count >= 2)
                     yield return Conflict.Create(potentialConflict, ancestorTree, localTree, remoteTree);
