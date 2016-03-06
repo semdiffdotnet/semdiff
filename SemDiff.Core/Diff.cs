@@ -27,6 +27,8 @@ namespace SemDiff.Core
             return (start2 <= start1 && start1 <= end2) || (start1 <= start2 && start2 <= end1); //true if start of one is within start of the other (inclusive)
         }
 
+        internal static bool IntersectsAny(Diff diff, IEnumerable<Diff> diffs) => diffs.Any(d => Intersects(diff, d));
+
         /// <summary>
         /// Get a string that represents the differences in the file in a way that is readable
         /// </summary>
@@ -63,15 +65,11 @@ namespace SemDiff.Core
             return builder.ToString();
         }
 
-        internal static bool IntersectsAny(Diff diff, IEnumerable<Diff> diffs) => diffs.Any(d => Intersects(diff, d));
-
         public static IEnumerable<Diff> Compare(SyntaxTree ancestor, SyntaxTree changed)
         {
             var offset = 0; //Tracks the difference in indexes as we move through the changed syntax tree
             foreach (var change in changed.GetChanges(ancestor)) //Assumption: I assume that this will allways be given sorted by place in file
             {
-                Logger.Debug($"{change}");
-
                 var origLength = change.Span.Length;
                 var offsetChange = (change.NewText.Length - origLength);
 

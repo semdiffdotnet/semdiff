@@ -11,5 +11,11 @@ namespace SemDiff.Core
         public RemoteChanges RemoteChange { get; internal set; }
         public RemoteFile RemoteFile { get; internal set; }
         public string TypeName { get; internal set; }
+
+        public override string ToString()
+        {
+            return $@"{nameof(DetectedFalseNegative)}: Location = {Location}, RemoteChange = {RemoteChange?.Url}, { ""
+                }RemoteFile = {RemoteFile.Filename}, TypeName = {TypeName}";
+        }
     }
 }

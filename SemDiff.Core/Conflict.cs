@@ -37,7 +37,6 @@ namespace SemDiff.Core
                 Local = SpanDetails.Create(first + localStartOffset, last + localEndOffset, localTree),
                 Remote = SpanDetails.Create(first + remoteStartOffset, last + remoteEndOffset, remoteTree)
             };
-            Logger.Debug($"Conflict: {con}");
             return con;
         }
 
