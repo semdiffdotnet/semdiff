@@ -47,7 +47,9 @@ namespace SemDiff.Test
                     Base = ancestor,
                     File = remote,
                     Filename = rPath
-                } }
+                } },
+                Title = "Fake Pull Request",
+                Url = "http://github.com/example/repo"
             });
 
             var res = Analysis.ForFalsePositive(repo, local, aPath);

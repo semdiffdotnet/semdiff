@@ -11,5 +11,6 @@ namespace SemDiff.Core
         public string Title { get; set; }
         public IEnumerable<RemoteFile> Files { get; set; }
         public DateTime Date { get; set; }
+        public string Url { get; set; }
     }
 }

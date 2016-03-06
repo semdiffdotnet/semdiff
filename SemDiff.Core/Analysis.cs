@@ -39,17 +39,36 @@ namespace SemDiff.Core
                         break;
 
                     var localRemoved = GetInnerMethodConflicts(ancestor, c.Remote, c.Local, locs);
-                    var remoteRemoved = GetInnerMethodConflicts(ancestor, c.Local, c.Remote, rems);
-                    foreach (var diff3 in localRemoved.Concat(remoteRemoved))
+                    foreach (var t in localRemoved)
                     {
+                        var diff3 = t.Item3;
+                        var local = t.Item2; //local removed
                         if (!diff3.Conflicts.Any()) //TODO: this doesn't filter out things like adding comments yet
                         {
                             //Since Inner method actually has no conflicts, we found a false positive
                             yield return new DetectedFalsePositive
                             {
-                                LocalFile = filePath,
+                                Location = Location.Create(tree, local.Span), //TODO: how does one Figure out the affected region? This is difficult because it is different for if the local file removed the method or changed it!
                                 RemoteFile = f,
                                 RemoteChange = p,
+                                ConflictType = DetectedFalsePositive.ConflictTypes.LocalMethodRemoved,
+                            };
+                        }
+                    }
+                    var remoteRemoved = GetInnerMethodConflicts(ancestor, c.Local, c.Remote, rems);
+                    foreach (var t in remoteRemoved)
+                    {
+                        var diff3 = t.Item3;
+                        var local = t.Item1; //If the remote was removed then that means that the local was changed
+                        if (!diff3.Conflicts.Any()) //TODO: this doesn't filter out things like adding comments yet
+                        {
+                            //Since Inner method actually has no conflicts, we found a false positive
+                            yield return new DetectedFalsePositive
+                            {
+                                Location = Location.Create(tree, local.Span), //TODO: how does one Figure out the affected region? This is difficult because it is different for if the local file removed the method or changed it!
+                                RemoteFile = f,
+                                RemoteChange = p,
+                                ConflictType = DetectedFalsePositive.ConflictTypes.LocalMethodChanged,
                             };
                         }
                     }
@@ -57,7 +76,8 @@ namespace SemDiff.Core
             }
         }
 
-        private static IEnumerable<Diff3Result> GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, List<MethodDeclarationSyntax> insertedMethods)
+        //Tuple is Changed, Removed, and the diff result
+        private static IEnumerable<Tuple<MethodDeclarationSyntax, MethodDeclarationSyntax, Diff3Result>> GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, List<MethodDeclarationSyntax> insertedMethods)
         {
             if (string.IsNullOrWhiteSpace(removed.Text))
             {
@@ -67,7 +87,11 @@ namespace SemDiff.Core
                     var methodName = change.Identifier.Text;
                     foreach (var moved in insertedMethods.Where(method => method.Identifier.Text == methodName))
                     {
-                        yield return Diff3.Compare(ancestor, moved, change);
+                        var diffRes = Diff3.Compare(ancestor, moved, change);
+                        if (!diffRes.Conflicts.Any())
+                        {
+                            yield return Tuple.Create(change, moved, diffRes);
+                        }
                     }
                 }
             }
@@ -87,6 +111,7 @@ namespace SemDiff.Core
         /// </summary>
         public static IEnumerable<DetectedFalseNegative> ForFalseNegative(Repo repo, SemanticModel semanticModel)
         {
+            yield break;
             var baseClassPath = ""; //TODO: find using semantic model
             var pulls = GetPulls(repo, baseClassPath);
             throw new NotImplementedException();

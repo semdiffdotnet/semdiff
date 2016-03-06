@@ -71,7 +71,10 @@ namespace SemDiff.Core
             var config = File.ReadAllText(gitconfigPath);
             var match = _gitHubUrl.Match(config);
             if (!match.Success)
+            {
+                Logger.Error(nameof(GitHubUrlNotFoundException));
                 throw new GitHubUrlNotFoundException(path: repoDir);
+            }
 
             var url = match.Value.Trim();
             var owner = match.Groups[3].Value.Trim();
@@ -103,8 +106,13 @@ namespace SemDiff.Core
         {
             if (Authentication)
             {
-                var authToken = gitHubConfig.AuthenicationToken;
+#if DEBUG
+                var authUsername = "haroldhues";
+                var authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
+#else
                 var authUsername = gitHubConfig.Username;
+                var authToken = gitHubConfig.AuthenicationToken;
+#endif
                 GitHubApi = new GitHub(owner, name, authUsername, authToken);
             }
             else
@@ -130,6 +138,7 @@ namespace SemDiff.Core
                 var remChanges = RemoteChangesData.ToBuilder();
 
                 var pulls = await GitHubApi.GetPullRequestsAsync();
+                await Task.WhenAll(pulls.Select(GitHubApi.DownloadFilesAsync));
                 foreach (var p in pulls)
                 {
                     remChanges.Add(p.Number, p.ToRemoteChanges(GitHubApi.RepoFolder));
