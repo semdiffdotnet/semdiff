@@ -30,6 +30,13 @@ namespace SemDiff.Core
 
         private const string FalsePositiveTitle = "Possible False-Positive condition detected"; //Not sure where this comes up yet
 
+        //InternalError
+        public const string InternalErrorDiagnosticId = "SemDiff";
+
+        private const string InternalErrorMessageFormat = "SemDiff Error: {0}";
+
+        private const string InternalErrorTitle = "SemDiff Internal Error";
+
         //similar to fp
         private static readonly DiagnosticDescriptor FalseNegative = new DiagnosticDescriptor(FalseNegativeDiagnosticId, FalseNegativeTitle, FalseNegativeMessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: FalseNegativeDescription);
 
@@ -37,20 +44,12 @@ namespace SemDiff.Core
         //There is a option to show this in the error list for more info
         private static readonly DiagnosticDescriptor FalsePositive = new DiagnosticDescriptor(FalsePositiveDiagnosticId, FalsePositiveTitle, FalsePositiveMessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true, description: FalsePositiveDescription);
 
+        private static readonly DiagnosticDescriptor InternalError = new DiagnosticDescriptor(InternalErrorDiagnosticId, InternalErrorTitle, InternalErrorMessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
+
         /// <summary>
         /// The Diagnostics we support, provided for the SupportedDiagnostics property of DiagnosticAnalyzer
         /// </summary>
-        public static ImmutableArray<DiagnosticDescriptor> Supported { get; } = ImmutableArray.Create(FalsePositive, FalseNegative);
-
-        /// <summary>
-        /// Converts `DetectedFalseNegative`s to Diagnostics (the class provided by Roslyn) and sends them to the function provided
-        /// </summary>
-        /// <param name="fps">todo: describe fps parameter on Convert</param>
-        public static Diagnostic Convert(DetectedFalseNegative fps)
-        {
-            //TODO: NotImplimented
-            return Diagnostic.Create(FalseNegative, Location.None, "FileName", @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33");
-        }
+        public static ImmutableArray<DiagnosticDescriptor> Supported { get; } = ImmutableArray.Create(FalsePositive, FalseNegative, InternalError);
 
         /// <summary>
         /// Converts `DetectedFalsePositive`s to Diagnostics (the class provided by Roslyn) and sends them to the function provided
@@ -58,8 +57,16 @@ namespace SemDiff.Core
         /// <param name="fps">todo: describe fps parameter on Convert</param>
         public static Diagnostic Convert(DetectedFalsePositive fps)
         {
-            //TODO: NotImplimented
-            return Diagnostic.Create(FalsePositive, Location.None, @"dir\dir\FileName.cs", "My pull request title", "https://github.com/semdiffdotnet/semdiff/pull/33");
+            return Diagnostic.Create(FalsePositive, fps.Location, fps.RemoteFile.Filename, fps.RemoteChange.Title, fps.RemoteChange.Url);
+        }
+
+        /// <summary>
+        /// Converts `DetectedFalseNegative`s to Diagnostics (the class provided by Roslyn) and sends them to the function provided
+        /// </summary>
+        /// <param name="fps">todo: describe fps parameter on Convert</param>
+        public static Diagnostic Convert(DetectedFalseNegative fns)
+        {
+            return Diagnostic.Create(FalseNegative, fns.Location, fns.TypeName, fns.RemoteFile.Filename, fns.RemoteChange.Title, fns.RemoteChange.Url);
         }
 
         /// <summary>
@@ -69,7 +76,7 @@ namespace SemDiff.Core
         /// <returns></returns>
         internal static Diagnostic NotGitHubRepo(string message)
         {
-            throw new NotImplementedException();
+            return Diagnostic.Create(InternalError, Location.None, message);
         }
 
         /// <summary>
@@ -78,7 +85,7 @@ namespace SemDiff.Core
         /// <returns></returns>
         internal static Diagnostic RateLimit()
         {
-            throw new NotImplementedException();
+            return Diagnostic.Create(InternalError, Location.None, "The Rate Limit has been exceeded, please check documentation for information on how to increase the limit");
         }
 
         /// <summary>
@@ -86,7 +93,7 @@ namespace SemDiff.Core
         /// </summary>
         public static Diagnostic AuthenticationFailure()
         {
-            throw new NotImplementedException();
+            return Diagnostic.Create(InternalError, Location.None, "GitHub Authentication Error, please check your credentials");
         }
 
         /// <summary>
@@ -96,7 +103,7 @@ namespace SemDiff.Core
         /// <returns></returns>
         internal static Diagnostic UnexpectedError(string verbNounPhrase)
         {
-            throw new NotImplementedException();
+            return Diagnostic.Create(InternalError, Location.None, $"Unknown Error {verbNounPhrase}");
         }
     }
 }

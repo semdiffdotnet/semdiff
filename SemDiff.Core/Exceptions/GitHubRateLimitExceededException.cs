@@ -4,6 +4,7 @@ using System.Runtime.Serialization;
 namespace SemDiff.Core.Exceptions
 {
     /// <summary>
+    /// This can ALSO be thrown if the maximum login attempts is exceeded
     /// Thrown when github reports that the rate limit has been exceeded, this could happen with an unauthenticated client or authenticated clients. The latter is more likely though.
     /// </summary>
     [Serializable]

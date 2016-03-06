@@ -19,8 +19,9 @@ namespace SemDiff.Core
     /// </summary>
     public class GitHub
     {
-        public GitHub(string repoOwner, string repoName)
+        public GitHub(string repoOwner, string repoName, string authUsername = null, string authToken = null)
         {
+            Logger.Info($"{nameof(GitHub)}: {authUsername}:{authToken} for {repoOwner}\\{repoName}");
             RepoOwner = repoOwner;
             RepoName = repoName;
             EtagNoChanges = null;
@@ -32,13 +33,13 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
             RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
-        }
 
-        public GitHub(string repoOwner, string repoName, string authUsername, string authToken) : this(repoOwner, repoName)
-        {
-            AuthUsername = authUsername;
-            AuthToken = authToken;
-            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
+            if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
+            {
+                AuthUsername = authUsername;
+                AuthToken = authToken;
+                Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
+            }
         }
 
         public string AuthToken { get; set; }
@@ -96,8 +97,14 @@ namespace SemDiff.Core
                 switch (response.StatusCode)
                 {
                     case HttpStatusCode.Unauthorized:
+                        var unauth = await response.Content.ReadAsStringAsync();
+                        var unauthorizedError = DeserializeWithErrorHandling<GitHubError>(unauth);
+                        Logger.Error($"{nameof(GitHubAuthenticationFailureException)}: {unauthorizedError.Message}");
                         throw new GitHubAuthenticationFailureException();
                     case HttpStatusCode.Forbidden:
+                        var forbid = await response.Content.ReadAsStringAsync();
+                        var forbidError = DeserializeWithErrorHandling<GitHubError>(forbid);
+                        Logger.Error($"{nameof(GitHubRateLimitExceededException)}: {forbidError.Message}");
                         throw new GitHubRateLimitExceededException();
                     case HttpStatusCode.NotModified:
                         //Returns null because we have nothing to update if nothing was modified
@@ -144,6 +151,7 @@ namespace SemDiff.Core
                     {
                         case Files.StatusEnum.Added:
                         case Files.StatusEnum.Removed:
+                        case Files.StatusEnum.Renamed: //Not sure how to handle this one...
                             break;
 
                         case Files.StatusEnum.Modified:
@@ -185,6 +193,7 @@ namespace SemDiff.Core
             }
             catch (Exception ex)
             {
+                Logger.Error($"{nameof(GitHubDeserializationException)}: {ex.Message}");
                 throw new GitHubDeserializationException(ex);
             }
         }
@@ -199,6 +208,9 @@ namespace SemDiff.Core
             [JsonProperty("updated_at")]
             public DateTime Updated { get; set; }
 
+            [JsonProperty("html_url")]
+            public string Url { get; set; }
+
             public User User { get; set; }
             public HeadBase Head { get; set; }
             public HeadBase Base { get; set; }
@@ -210,6 +222,7 @@ namespace SemDiff.Core
                 {
                     Date = Updated,
                     Title = Title,
+                    Url = Url,
                     Files = Files.Where(f => f.Status == GitHub.Files.StatusEnum.Modified).Where(f => f.Filename.Split('.').Last() == "cs").Select(f => f.ToRemoteFile(repofolder, Number)).ToList(),
                 };
             }
@@ -241,6 +254,7 @@ namespace SemDiff.Core
                 Added,
                 Modified,
                 Removed,
+                Renamed
             }
         }
 
@@ -258,13 +272,14 @@ namespace SemDiff.Core
 
         internal class GitHubError
         {
-            private string Message { get; set; }
+            public string Message { get; set; }
 
             [JsonProperty("documentation_url")]
-            private string DocumentationUrl { get; set; }
+            public string DocumentationUrl { get; set; }
 
             internal Exception ToException()
             {
+                Logger.Error($"{nameof(GitHubUnknownErrorException)}: {Message}");
                 return new GitHubUnknownErrorException(
                         string.IsNullOrWhiteSpace(DocumentationUrl)
                         ? Message

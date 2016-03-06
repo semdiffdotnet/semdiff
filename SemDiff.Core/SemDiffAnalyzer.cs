@@ -4,7 +4,9 @@ using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SemDiff.Core
@@ -17,6 +19,9 @@ namespace SemDiff.Core
         //Called once per solution, to provide us an oportunity to assign callbacks
         public override void Initialize(AnalysisContext context)
         {
+#if DEBUG
+            Logger.AddHooks(Logger.LogToFile($@"C:\Users\Public\Documents\semdiff_logs_{Guid.NewGuid()}.txt"));
+#endif
             context.RegisterSemanticModelAction(OnSemanticModel);
         }
 
@@ -39,6 +44,8 @@ namespace SemDiff.Core
 
         private static async Task<IEnumerable<Diagnostic>> AnalyzeAsync(SemanticModel semanticModel)
         {
+            var timer = Stopwatch.StartNew();
+            Logger.Debug($"Entering {nameof(AnalyzeAsync)}: {semanticModel?.SyntaxTree?.FilePath}");
             var diags = Enumerable.Empty<Diagnostic>();
             try
             {
@@ -55,27 +62,22 @@ namespace SemDiff.Core
             catch (GitHubAuthenticationFailureException ex)
             {
                 diags = new[] { Diagnostics.AuthenticationFailure() };
-                Logger.Error(ex.Message);
             }
             catch (GitHubRateLimitExceededException ex)
             {
                 diags = new[] { Diagnostics.RateLimit() };
-                Logger.Error(ex.Message);
             }
             catch (GitHubUrlNotFoundException ex)
             {
                 diags = new[] { Diagnostics.NotGitHubRepo(ex.Message) };
-                Logger.Error(ex.Message);
             }
             catch (GitHubUnknownErrorException ex)
             {
-                diags = new[] { Diagnostics.UnexpectedError("Communicating with GitHub") };
-                Logger.Error(ex.Message);
+                diags = new[] { Diagnostics.UnexpectedError($"Communicating with GitHub: '{ex.Message}'") };
             }
             catch (GitHubDeserializationException ex)
             {
                 diags = new[] { Diagnostics.UnexpectedError("Deserializing Data") };
-                Logger.Error(ex.Message);
             }
             catch (Exception ex)
             {
@@ -83,6 +85,7 @@ namespace SemDiff.Core
                 Logger.Error($"Unhandled Exception: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
             }
 
+            Logger.Debug($"Exiting {nameof(AnalyzeAsync)}: {semanticModel?.SyntaxTree?.FilePath} in {timer.Elapsed}");
             return diags;
         }
     }
