@@ -37,7 +37,6 @@ namespace SemDiff.Core
         private async static Task<IEnumerable<Diagnostic>> OnCompilationAsync(Compilation comp)
         {
             Logger.Trace($"Entering {nameof(OnCompilationAsync)}: {comp.AssemblyName}");
-            IEnumerable<Diagnostic> diags;
             try
             {
                 var data = Store.InterlockedAddOrUpdate(comp.AssemblyName, comp.SyntaxTrees, GetRepo);
@@ -50,42 +49,43 @@ namespace SemDiff.Core
                     }
                     catch (GitHubAuthenticationFailureException)
                     {
-                        diags = new[] { Diagnostics.AuthenticationFailure() };
+                        return new[] { Diagnostics.AuthenticationFailure() };
                     }
                     catch (GitHubRateLimitExceededException)
                     {
-                        diags = new[] { Diagnostics.RateLimit() };
+                        return new[] { Diagnostics.RateLimit() };
                     }
                     catch (GitHubUrlNotFoundException ex)
                     {
-                        diags = new[] { Diagnostics.NotGitHubRepo(ex.Message) };
+                        return new[] { Diagnostics.NotGitHubRepo(ex.Message) };
                     }
                     catch (GitHubUnknownErrorException ex)
                     {
-                        diags = new[] { Diagnostics.UnexpectedError($"Communicating with GitHub: '{ex.Message}'") };
+                        return new[] { Diagnostics.UnexpectedError($"Communicating with GitHub: '{ex.Message}'") };
                     }
                     catch (GitHubDeserializationException)
                     {
-                        diags = new[] { Diagnostics.UnexpectedError("Deserializing Data") };
+                        return new[] { Diagnostics.UnexpectedError("Deserializing Data") };
                     }
                     catch (Exception ex)
                     {
                         Logger.Error($"Unhandled Exception from {nameof(repo.UpdateRemoteChangesAsync)}: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
-                        diags = new[] { Diagnostics.UnexpectedError("Communicating with GitHub") };
+                        return new[] { Diagnostics.UnexpectedError("Communicating with GitHub") };
                     }
                 }
 
-                diags = repos.SelectMany(r => data.GetTreesForRepo(r).Select(t => new { t, r }))
+                return repos.SelectMany(r => data.GetTreesForRepo(r).Select(t => new { t, r }))
                                                  .SelectMany(tr => Analyze(comp.GetSemanticModel(tr.t), tr.r));
-                return diags;
             }
             catch (Exception ex)
             {
                 Logger.Error($"Unhandled Exception: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
-                diags = new[] { Diagnostics.UnexpectedError("Running Analysis") };
+                return new[] { Diagnostics.UnexpectedError("Running Analysis") };
             }
-            Logger.Trace($"Entering {nameof(OnCompilationAsync)}: {comp.AssemblyName}");
-            return diags;
+            finally
+            {
+                Logger.Trace($"Entering {nameof(OnCompilationAsync)}: {comp.AssemblyName}");
+            }
         }
 
         private static Repo GetRepo(SyntaxTree tree) => Repo.GetRepoFor(tree.FilePath);
