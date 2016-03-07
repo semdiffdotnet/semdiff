@@ -78,17 +78,11 @@ namespace SemDiff.Core
         private async Task<string> HttpGetAsync(string url, Ref<string> etag = null)
         {
             //Request, but retry once waiting 5 minutes
-<<<<<<< HEAD
             Client.DefaultRequestHeaders.IfNoneMatch.Clear();
             if (etag?.Value != null)
             {
                 Client.DefaultRequestHeaders.IfNoneMatch.Add(EntityTagHeaderValue.Parse(etag.Value));
             }
-=======
-            paginationURL = null;
-            if (EtagNoChanges != null)
-                Client.DefaultRequestHeaders.Add("If-None-Match", EtagNoChanges);
->>>>>>> master
             var response = await Extensions.RetryOnceAsync(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
             IEnumerable<string> headerVal;
             if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
@@ -105,7 +99,7 @@ namespace SemDiff.Core
             }
             if (response.Headers.TryGetValues("Link", out headerVal))
             {
-                var parsedLink = headerVal.First().Split('<', '>','"');
+                var parsedLink = headerVal.First().Split('<', '>', '"');
                 var count = 0;
                 foreach (var p in parsedLink)
                 {
@@ -116,6 +110,10 @@ namespace SemDiff.Core
                     }
                     count++;
                 }
+            }
+            else
+            {
+                paginationURL = null;
             }
             if (!response.IsSuccessStatusCode)
             {
@@ -153,31 +151,26 @@ namespace SemDiff.Core
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
             var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
-<<<<<<< HEAD
             var etag = Ref.Create(EtagNoChanges);
-            var pullRequests = await HttpGetAsync<IList<PullRequest>>(url);
-            if (pullRequests == null)
-=======
-            var paginationPRs = await HttpGetAsync<IList<PullRequest>>(url);
+            var paginationPRs = await HttpGetAsync<IList<PullRequest>>(url, etag);
+            EtagNoChanges = etag.Value;
             var pullRequests = paginationPRs;
-            while(paginationPRs != null)
+            while (paginationPRs != null)
             {
                 paginationPRs = null;
-                if(paginationURL != null)
+                if (paginationURL != null)
                 {
                     paginationPRs = await HttpGetAsync<IList<PullRequest>>(paginationURL);
-                    foreach(var cur in paginationPRs)
+                    foreach (var cur in paginationPRs)
                     {
                         pullRequests.Add(cur);
                     }
                 }
             }
-            if(pullRequests == null)
->>>>>>> master
+            if (pullRequests == null)
             {
                 return null;
             }
-            EtagNoChanges = etag.Value;
             return await Task.WhenAll(pullRequests.Select(async pr =>
             {
                 var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
