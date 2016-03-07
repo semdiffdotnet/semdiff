@@ -51,6 +51,7 @@ namespace SemDiff.Core
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
         public string EtagNoChanges { get; set; }
+        private string paginationURL { get; set; }
 
         /// <summary>
         /// Makes a request to github to update RequestsRemaining and RequestsLimit
@@ -76,7 +77,8 @@ namespace SemDiff.Core
         private async Task<string> HttpGetAsync(string url)
         {
             //Request, but retry once waiting 5 minutes
-            if(EtagNoChanges != null)
+            paginationURL = null;
+            if (EtagNoChanges != null)
                 Client.DefaultRequestHeaders.Add("If-None-Match", EtagNoChanges);
             var response = await Extensions.RetryOnceAsync(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
             IEnumerable<string> headerVal;
@@ -91,6 +93,20 @@ namespace SemDiff.Core
             if (response.Headers.TryGetValues("ETag", out headerVal))
             {
                 EtagNoChanges = headerVal.Single();
+            }
+            if (response.Headers.TryGetValues("Link", out headerVal))
+            {
+                var parsedLink = headerVal.First().Split('<', '>','"');
+                var count = 0;
+                foreach (var p in parsedLink)
+                {
+                    if (p == "next")
+                    {
+                        //count - 2 because there is a a string "; rel=" between the next and the url
+                        paginationURL = parsedLink[count - 2];
+                    }
+                    count++;
+                }
             }
             if (!response.IsSuccessStatusCode)
             {
@@ -118,11 +134,29 @@ namespace SemDiff.Core
             return await response.Content.ReadAsStringAsync();
         }
 
+        /// <summary>
+        /// Gets each page of the pull request list from GitHub.
+        /// Once the list is complete, get all the pull request files for each pull request.
+        /// </summary>
+        /// <returns>List of pull request information.</returns>
         public async Task<IList<PullRequest>> GetPullRequestsAsync()
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
             var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
-            var pullRequests = await HttpGetAsync<IList<PullRequest>>(url);
+            var paginationPRs = await HttpGetAsync<IList<PullRequest>>(url);
+            var pullRequests = paginationPRs;
+            while(paginationPRs != null)
+            {
+                paginationPRs = null;
+                if(paginationURL != null)
+                {
+                    paginationPRs = await HttpGetAsync<IList<PullRequest>>(paginationURL);
+                    foreach(var cur in paginationPRs)
+                    {
+                        pullRequests.Add(cur);
+                    }
+                }
+            }
             if(pullRequests == null)
             {
                 return null;
