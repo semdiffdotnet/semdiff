@@ -59,9 +59,9 @@ namespace SemDiff.Core
 
         private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)");
 
-        public string Owner { get; private set; }
-        public string Name { get; private set; }
-        public string LocalDirectory { get; private set; }
+        public string Owner { get; }
+        public string Name { get; }
+        public string LocalDirectory { get; }
         public GitHub GitHubApi { get; private set; }
         public DateTime LastUpdate { get; internal set; } = DateTime.MinValue; //Old date insures update first time
         internal ImmutableDictionary<int, RemoteChanges> RemoteChangesData { get; set; } = ImmutableDictionary<int, RemoteChanges>.Empty;
