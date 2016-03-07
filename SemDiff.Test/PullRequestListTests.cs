@@ -16,7 +16,7 @@ namespace SemDiff.Test
         [TestInitialize]
         public void TestInit()
         {
-            github = new GitHub(owner, repository);
+            github = new GitHub(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
             github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
             if (new FileInfo(appDataFolder).Exists)
@@ -66,6 +66,20 @@ namespace SemDiff.Test
             }
             var requests = github.GetPullRequestsAsync().Result;
             requests = github.GetPullRequestsAsync().Result;
+            Assert.AreEqual(null, requests);
+        }
+
+        [TestMethod]
+        public void Pagination()
+        {
+            if (github.RequestsRemaining == 0)
+            {
+                Assert.Inconclusive("Thou hast ran out of requests");
+            }
+            github.RepoOwner = "dotnet";
+            github.RepoName = "roslyn";
+            var roslynPRs = github.GetPullRequestsAsync().Result;
+            Assert.IsTrue(roslynPRs.Count > 30);
         }
         [TestMethod]
         public void GetFilesFromGitHub()
