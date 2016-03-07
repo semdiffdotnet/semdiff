@@ -134,6 +134,11 @@ namespace SemDiff.Core
             return await response.Content.ReadAsStringAsync();
         }
 
+        /// <summary>
+        /// Gets each page of the pull request list from GitHub.
+        /// Once the list is complete, get all the pull request files for each pull request.
+        /// </summary>
+        /// <returns>List of pull request information.</returns>
         public async Task<IList<PullRequest>> GetPullRequestsAsync()
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
