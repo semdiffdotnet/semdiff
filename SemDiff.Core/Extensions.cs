@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace SemDiff.Core
@@ -7,6 +8,8 @@ namespace SemDiff.Core
     public static class Extensions
     {
         public static Queue<T> ToQueue<T>(this IEnumerable<T> source) => new Queue<T>(source);
+
+        public static IEnumerable<T> Log<T>(this IEnumerable<T> source, Action<T> loggingAction) => source.Select(o => { loggingAction?.Invoke(o); return o; });
 
         public static Queue<T> GetMergedChangeQueue<T>(this IEnumerable<T> left, IEnumerable<T> right, Func<T, int> selector)
         {

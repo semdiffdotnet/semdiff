@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.Diagnostics;
 using SemDiff.Core.Exceptions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -56,7 +57,11 @@ namespace SemDiff.Core
                     await repo.UpdateRemoteChangesAsync();
                     var fps = Analysis.ForFalsePositive(repo, semanticModel.SyntaxTree, filePath);
                     var fns = Analysis.ForFalseNegative(repo, semanticModel);
-                    diags = fns.Select(Diagnostics.Convert).Concat(fns.Select(Diagnostics.Convert));
+#if DEBUG
+                    fps = fps.Log(fp => Logger.Info($"{fp}"));
+                    fns = fns.Log(fn => Logger.Info($"{fn}"));
+#endif
+                    diags = fps.Select(Diagnostics.Convert).Concat(fns.Select(Diagnostics.Convert));
                 }
             }
             catch (GitHubAuthenticationFailureException ex)

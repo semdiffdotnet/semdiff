@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using SemDiff.Core;
 using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Generic;
@@ -66,20 +67,22 @@ namespace SemDiff.Core
         /// </summary>
         /// <param name="url">relative url to the requested resource</param>
         /// <typeparam name="T">Type the request is expected to contain</typeparam>
-        private async Task<T> HttpGetAsync<T>(string url) where T : class
+        private async Task<T> HttpGetAsync<T>(string url, Ref<string> etag = null) where T : class
         {
-            var content = await HttpGetAsync(url);
+            var content = await HttpGetAsync(url, etag);
             if (content == null)
                 return null;
             return DeserializeWithErrorHandling<T>(content);
         }
 
-        private async Task<string> HttpGetAsync(string url)
+        private async Task<string> HttpGetAsync(string url, Ref<string> etag = null)
         {
             //Request, but retry once waiting 5 minutes
-            paginationURL = null;
-            if (EtagNoChanges != null)
-                Client.DefaultRequestHeaders.Add("If-None-Match", EtagNoChanges);
+            Client.DefaultRequestHeaders.IfNoneMatch.Clear();
+            if (etag?.Value != null)
+            {
+                Client.DefaultRequestHeaders.IfNoneMatch.Add(EntityTagHeaderValue.Parse(etag.Value));
+            }
             var response = await Extensions.RetryOnceAsync(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
             IEnumerable<string> headerVal;
             if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
@@ -90,13 +93,13 @@ namespace SemDiff.Core
             {
                 RequestsRemaining = int.Parse(headerVal.Single());
             }
-            if (response.Headers.TryGetValues("ETag", out headerVal))
+            if (etag != null && response.Headers.TryGetValues("ETag", out headerVal))
             {
-                EtagNoChanges = headerVal.Single();
+                etag.Value = headerVal.Single();
             }
             if (response.Headers.TryGetValues("Link", out headerVal))
             {
-                var parsedLink = headerVal.First().Split('<', '>','"');
+                var parsedLink = headerVal.First().Split('<', '>', '"');
                 var count = 0;
                 foreach (var p in parsedLink)
                 {
@@ -107,6 +110,10 @@ namespace SemDiff.Core
                     }
                     count++;
                 }
+            }
+            else
+            {
+                paginationURL = null;
             }
             if (!response.IsSuccessStatusCode)
             {
@@ -125,6 +132,7 @@ namespace SemDiff.Core
                     case HttpStatusCode.NotModified:
                         //Returns null because we have nothing to update if nothing was modified
                         return null;
+
                     default:
                         var str = await response.Content.ReadAsStringAsync();
                         var error = DeserializeWithErrorHandling<GitHubError>(str);
@@ -143,21 +151,23 @@ namespace SemDiff.Core
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
             var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
-            var paginationPRs = await HttpGetAsync<IList<PullRequest>>(url);
+            var etag = Ref.Create(EtagNoChanges);
+            var paginationPRs = await HttpGetAsync<IList<PullRequest>>(url, etag);
+            EtagNoChanges = etag.Value;
             var pullRequests = paginationPRs;
-            while(paginationPRs != null)
+            while (paginationPRs != null)
             {
                 paginationPRs = null;
-                if(paginationURL != null)
+                if (paginationURL != null)
                 {
                     paginationPRs = await HttpGetAsync<IList<PullRequest>>(paginationURL);
-                    foreach(var cur in paginationPRs)
+                    foreach (var cur in paginationPRs)
                     {
                         pullRequests.Add(cur);
                     }
                 }
             }
-            if(pullRequests == null)
+            if (pullRequests == null)
             {
                 return null;
             }
@@ -209,7 +219,7 @@ namespace SemDiff.Core
 
         internal static string GetPathInCache(string repofolder, int prNum, string path, bool isAncestor = false)
         {
-            var dir = Path.Combine(repofolder, $"{prNum}", path);
+            var dir = Path.Combine(repofolder, $"{prNum}", path.Replace('/', '\\'));
 
             if (isAncestor)
             {

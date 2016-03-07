@@ -141,7 +141,7 @@ namespace SemDiff.Core
                 await Task.WhenAll(pulls.Select(GitHubApi.DownloadFilesAsync));
                 foreach (var p in pulls)
                 {
-                    remChanges.Add(p.Number, p.ToRemoteChanges(GitHubApi.RepoFolder));
+                    remChanges[p.Number] = p.ToRemoteChanges(GitHubApi.RepoFolder);
                 }
 
                 //Update our RemoteChangesData referace to new data
