@@ -131,6 +131,7 @@
     <Compile Include="Configuration\AuthenticationElement.cs" />
     <Compile Include="Configuration\AuthenticationSection.cs" />
     <Compile Include="Analysis.cs" />
+    <Compile Include="DataStore.cs" />
     <Compile Include="DetectedFalseNegative.cs" />
     <Compile Include="DetectedFalsePositive.cs" />
     <Compile Include="Diagnostics.cs" />
