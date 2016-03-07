@@ -113,10 +113,12 @@ namespace SemDiff.Core
         /// </summary>
         public static IEnumerable<DetectedFalseNegative> ForFalseNegative(Repo repo, SemanticModel semanticModel)
         {
-            var classDeclarations = semanticModel.SyntaxTree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>().ToList();
-            var declaredSymbol = classDeclarations.Select(cds => semanticModel.GetDeclaredSymbol(cds)).ToList();
-            var classBases = declaredSymbol.SelectMany(t => (t as INamedTypeSymbol)?.BaseType?.DeclaringSyntaxReferences ?? Enumerable.Empty<SyntaxReference>()).ToList();
-            var classBaseNodes = Task.WhenAll(classBases.Select(sr => sr.GetSyntaxAsync())).Result.OfType<ClassDeclarationSyntax>().ToList();
+            var classDeclarations = semanticModel.SyntaxTree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>();
+            var declaredSymbol = classDeclarations.Select(cds => semanticModel.GetDeclaredSymbol(cds));
+            var classBases = declaredSymbol.SelectMany(
+                    t => (t as INamedTypeSymbol)?.BaseType?.DeclaringSyntaxReferences ?? Enumerable.Empty<SyntaxReference>()
+                );
+            var classBaseNodes = Task.WhenAll(classBases.Select(sr => sr.GetSyntaxAsync())).Result.OfType<ClassDeclarationSyntax>();
             return classBaseNodes.SelectMany(c =>
             {
                 var relativePath = GetRelativePath(repo.LocalDirectory, c.SyntaxTree.FilePath).Replace('\\', '/'); //Standardize Directory Separator!
