@@ -40,6 +40,8 @@ namespace SemDiff.Core
                 AuthToken = authToken;
                 Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
             }
+
+            CheckCurrentSaved();
         }
 
         public string AuthToken { get; set; }
@@ -51,6 +53,13 @@ namespace SemDiff.Core
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
         public string EtagNoChanges { get; set; }
+        public IList<PullRequest> currentSaved { get; set; }
+
+
+        public void CheckCurrentSaved()
+        {
+
+        }
 
         /// <summary>
         /// Makes a request to github to update RequestsRemaining and RequestsLimit
@@ -155,7 +164,7 @@ namespace SemDiff.Core
                             break;
 
                         case Files.StatusEnum.Modified:
-                            var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
+                            var headTsk = DownloadFileAsync (pr.Number, current.Filename, pr.Head.Sha);
                             var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
                             await Task.WhenAll(headTsk, ancTsk);
                             break;
