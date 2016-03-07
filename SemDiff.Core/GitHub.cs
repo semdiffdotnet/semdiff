@@ -11,6 +11,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace SemDiff.Core
@@ -52,7 +53,6 @@ namespace SemDiff.Core
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
         public string EtagNoChanges { get; set; }
-        private string paginationURL { get; set; }
 
         /// <summary>
         /// Makes a request to github to update RequestsRemaining and RequestsLimit
@@ -67,15 +67,15 @@ namespace SemDiff.Core
         /// </summary>
         /// <param name="url">relative url to the requested resource</param>
         /// <typeparam name="T">Type the request is expected to contain</typeparam>
-        private async Task<T> HttpGetAsync<T>(string url, Ref<string> etag = null) where T : class
+        private async Task<T> HttpGetAsync<T>(string url, Ref<string> etag = null, Ref<string> pages = null) where T : class
         {
-            var content = await HttpGetAsync(url, etag);
+            var content = await HttpGetAsync(url, etag, pages);
             if (content == null)
                 return null;
             return DeserializeWithErrorHandling<T>(content);
         }
 
-        private async Task<string> HttpGetAsync(string url, Ref<string> etag = null)
+        private async Task<string> HttpGetAsync(string url, Ref<string> etag = null, Ref<string> pages = null)
         {
             //Request, but retry once waiting 5 minutes
             Client.DefaultRequestHeaders.IfNoneMatch.Clear();
@@ -92,28 +92,6 @@ namespace SemDiff.Core
             if (response.Headers.TryGetValues("X-RateLimit-Remaining", out headerVal))
             {
                 RequestsRemaining = int.Parse(headerVal.Single());
-            }
-            if (etag != null && response.Headers.TryGetValues("ETag", out headerVal))
-            {
-                etag.Value = headerVal.Single();
-            }
-            if (response.Headers.TryGetValues("Link", out headerVal))
-            {
-                var parsedLink = headerVal.First().Split('<', '>', '"');
-                var count = 0;
-                foreach (var p in parsedLink)
-                {
-                    if (p == "next")
-                    {
-                        //count - 2 because there is a a string "; rel=" between the next and the url
-                        paginationURL = parsedLink[count - 2];
-                    }
-                    count++;
-                }
-            }
-            else
-            {
-                paginationURL = null;
             }
             if (!response.IsSuccessStatusCode)
             {
@@ -139,7 +117,30 @@ namespace SemDiff.Core
                         throw error.ToException();
                 }
             }
+            if (etag != null && response.Headers.TryGetValues("ETag", out headerVal))
+            {
+                etag.Value = headerVal.Single();
+            }
+            if (pages != null)
+            {
+                pages.Value = response.Headers.TryGetValues("Link", out headerVal) ? ParseNextLink(headerVal) : null;
+            }
             return await response.Content.ReadAsStringAsync();
+        }
+
+        private static Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
+
+        private static string ParseNextLink(IEnumerable<string> links)
+        {
+            foreach (var l in links)
+            {
+                var match = nextLinkPattern.Match(l);
+                if (match.Success)
+                {
+                    return match.Groups[1].Value;
+                }
+            }
+            return null;
         }
 
         /// <summary>
@@ -152,15 +153,16 @@ namespace SemDiff.Core
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
             var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
             var etag = Ref.Create(EtagNoChanges);
-            var paginationPRs = await HttpGetAsync<IList<PullRequest>>(url, etag);
+            var pagination = Ref.Create<string>(null);
+            var paginationPRs = await HttpGetAsync<IList<PullRequest>>(url, etag, pagination);
             EtagNoChanges = etag.Value;
             var pullRequests = paginationPRs;
             while (paginationPRs != null)
             {
                 paginationPRs = null;
-                if (paginationURL != null)
+                if (pagination.Value != null)
                 {
-                    paginationPRs = await HttpGetAsync<IList<PullRequest>>(paginationURL);
+                    paginationPRs = await HttpGetAsync<IList<PullRequest>>(pagination.Value, pages: pagination);
                     foreach (var cur in paginationPRs)
                     {
                         pullRequests.Add(cur);
