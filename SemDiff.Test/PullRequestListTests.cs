@@ -16,7 +16,7 @@ namespace SemDiff.Test
         [TestInitialize]
         public void TestInit()
         {
-            github = new GitHub(owner, repository);
+            github = new GitHub(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
             github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
             if (new FileInfo(appDataFolder).Exists)
@@ -117,5 +117,44 @@ namespace SemDiff.Test
             }
             Assert.AreEqual(fourWasFound, true);
         }
+        [TestMethod]
+        public void RemoveUnusedLocalFiles()
+        {
+            var path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            path += Path.DirectorySeparatorChar + "0" + Path.DirectorySeparatorChar;
+            new FileInfo(path).Directory.Create();
+            var requests = github.GetPullRequestsAsync().Result;
+            //get files from github
+            var prFive = new GitHub.PullRequest
+            {
+                Number = 0,
+                State = requests.First().State,
+                Title = requests.First().Title,
+                Locked = requests.First().Locked,
+                Updated = requests.First().Updated,
+                LastWrite = requests.First().LastWrite,
+                Url = requests.First().Url,
+                User = requests.First().User,
+                Head = requests.First().Head,
+                Base = requests.First().Base,
+                Files = requests.First().Files
+    };
+            var currentSaved = github.currentSaved;
+            currentSaved.Add(prFive);
+            github.currentSaved = currentSaved;
+            GitHub newGitHub = github = new GitHub(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
+            newGitHub.currentSaved = currentSaved;
+            requests = newGitHub.GetPullRequestsAsync().Result;
+            Assert.IsFalse(Directory.Exists(path));
+        }
+        //*/
+        [TestMethod]
+        public void LastSessionLocalFiles()
+        {
+            var requests = github.GetPullRequestsAsync().Result;
+            var newgithub = new GitHub(owner, repository);
+            Assert.IsNotNull(newgithub.currentSaved);
+        }
+
     }
 }

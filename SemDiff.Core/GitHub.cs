@@ -33,15 +33,14 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
             RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
-
+            JsonFileName = "LocalList.json";
             if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
             {
                 AuthUsername = authUsername;
                 AuthToken = authToken;
                 Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
             }
-
-            CheckCurrentSaved();
+            GetCurrentSaved();
         }
 
         public string AuthToken { get; set; }
@@ -54,11 +53,23 @@ namespace SemDiff.Core
         public string RepoFolder { get; set; }
         public string EtagNoChanges { get; set; }
         public IList<PullRequest> currentSaved { get; set; }
+        public string JsonFileName { get; set; }
 
 
-        public void CheckCurrentSaved()
+        private void GetCurrentSaved()
         {
-
+            try
+            {
+                var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+                path += Path.DirectorySeparatorChar + JsonFileName;
+                var json = File.ReadAllText(path);
+                currentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
+            }
+            catch
+            {
+                //Catch is only here to be used if the json file does not exist. 
+                //If it doesn't exist, ignore.
+            }
         }
 
         /// <summary>
@@ -126,6 +137,28 @@ namespace SemDiff.Core
             }
             return await response.Content.ReadAsStringAsync();
         }
+        
+        private void removeUnusedPRs(IEnumerable<PullRequest> prs)
+        {
+            foreach(var pr in prs)
+            {
+                var dir = Path.Combine(RepoFolder, $"{pr.Number}");
+                try {
+                    Directory.Delete(dir, true);
+                } catch
+                {
+                    //Does nothing if there is no directory to delete.
+                }
+            }
+            
+        }
+        private void UpdateLocalSavedList()
+        {
+            var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            path += Path.DirectorySeparatorChar + JsonFileName;
+            new FileInfo(path).Directory.Create();
+            File.WriteAllText(path, JsonConvert.SerializeObject(currentSaved));
+        }
 
         public async Task<IList<PullRequest>> GetPullRequestsAsync()
         {
@@ -136,10 +169,30 @@ namespace SemDiff.Core
             {
                 return null;
             }
+            if (currentSaved != null)
+            {
+                var removePRs = currentSaved;     
+                foreach(var pr in pullRequests)
+                {
+                    foreach(var prRemove in removePRs)
+                    {
+                        if (pr.Number == prRemove.Number)
+                        {
+                            removePRs.Remove(prRemove);
+                            break;
+                        }
+                    }
+                }
+                removeUnusedPRs(removePRs);
+            }
+            currentSaved = pullRequests;
+            
             return await Task.WhenAll(pullRequests.Select(async pr =>
             {
+                pr.LastWrite = DateTime.Now;
                 var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
                 pr.Files = files;
+                UpdateLocalSavedList();
                 return pr;
             }));
         }
@@ -216,7 +269,7 @@ namespace SemDiff.Core
 
             [JsonProperty("updated_at")]
             public DateTime Updated { get; set; }
-
+            public DateTime LastWrite { get; set; }
             [JsonProperty("html_url")]
             public string Url { get; set; }
 
