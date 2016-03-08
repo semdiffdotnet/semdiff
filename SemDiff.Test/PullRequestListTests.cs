@@ -234,15 +234,14 @@ namespace SemDiff.Test
                     }
                 }
             }
-            var fileLastUpdated = File.GetLastAccessTimeUtc(path);
-            github.UpdateLocalSavedList();
+            var fileLastUpdated = File.GetLastWriteTimeUtc(path);
             github.EtagNoChanges = null;
             requests = github.GetPullRequestsAsync().Result;
             foreach (var r in requests)
             {
                 github.DownloadFilesAsync(r).Wait();
             }
-            Assert.IsTrue(fileLastUpdated == File.GetLastAccessTimeUtc(path));
+            Assert.IsTrue(fileLastUpdated == File.GetLastWriteTimeUtc(path));
         }
     }
 }
