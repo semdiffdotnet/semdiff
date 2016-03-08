@@ -82,6 +82,21 @@ namespace SemDiff.Test
             Assert.IsTrue(roslynPRs.Count > 30);
         }
         [TestMethod]
+        public void FilesPagination()
+        {
+            if (github.RequestsRemaining == 0)
+            {
+                Assert.Inconclusive("Thou hast ran out of requests");
+            }
+            var PRs = github.GetPullRequestsAsync().Result;
+            Assert.IsTrue(PRs.Count >= 5);
+            foreach(var pr in PRs)
+            {
+                if (pr.Number == 5)
+                    Assert.IsTrue(pr.Files.Count == 40);
+            }
+        }
+        [TestMethod]
         public void GetFilesFromGitHub()
         {
             if (github.RequestsRemaining == 0)
