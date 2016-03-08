@@ -66,9 +66,9 @@ namespace SemDiff.Core
                 var json = File.ReadAllText(path);
                 CurrentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
             }
-            catch
+            catch(Exception ex)
             {
-                
+                Logger.Error($"{ex.GetType().Name}: Couldn't load {JsonFileName} because {ex.Message}");
             }
         }
 
@@ -179,12 +179,11 @@ namespace SemDiff.Core
                 {
                     Directory.Delete(dir, true);
                 }
-                catch
+                catch(Exception ex)
                 {
-                    //Does nothing if there is no directory to delete.
+                    Logger.Error($"{ex.GetType().Name}: Couldn't load {JsonFileName} because {ex.Message}");
                 }
             }
-
         }
 
         /// <summary>
