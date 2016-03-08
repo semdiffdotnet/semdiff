@@ -206,6 +206,8 @@ namespace SemDiff.Test
             File.WriteAllText(path, JsonConvert.SerializeObject(currentSaved));
             github.GetCurrentSaved();
             requests = github.GetPullRequestsAsync().Result;
+            path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            path = Path.Combine(path, "0");
             Assert.IsFalse(Directory.Exists(path));
         }
         [TestMethod]
