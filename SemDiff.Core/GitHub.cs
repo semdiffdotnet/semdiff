@@ -1,6 +1,7 @@
 ﻿using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using SemDiff.Core;
 using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace SemDiff.Core
@@ -84,19 +86,22 @@ namespace SemDiff.Core
         /// </summary>
         /// <param name="url">relative url to the requested resource</param>
         /// <typeparam name="T">Type the request is expected to contain</typeparam>
-        private async Task<T> HttpGetAsync<T>(string url) where T : class
+        private async Task<T> HttpGetAsync<T>(string url, Ref<string> etag = null, Ref<string> pages = null) where T : class
         {
-            var content = await HttpGetAsync(url);
+            var content = await HttpGetAsync(url, etag, pages);
             if (content == null)
                 return null;
             return DeserializeWithErrorHandling<T>(content);
         }
 
-        private async Task<string> HttpGetAsync(string url)
+        private async Task<string> HttpGetAsync(string url, Ref<string> etag = null, Ref<string> pages = null)
         {
             //Request, but retry once waiting 5 minutes
-            if(EtagNoChanges != null)
-                Client.DefaultRequestHeaders.Add("If-None-Match", EtagNoChanges);
+            Client.DefaultRequestHeaders.IfNoneMatch.Clear();
+            if (etag?.Value != null)
+            {
+                Client.DefaultRequestHeaders.IfNoneMatch.Add(EntityTagHeaderValue.Parse(etag.Value));
+            }
             var response = await Extensions.RetryOnceAsync(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
             IEnumerable<string> headerVal;
             if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
@@ -106,10 +111,6 @@ namespace SemDiff.Core
             if (response.Headers.TryGetValues("X-RateLimit-Remaining", out headerVal))
             {
                 RequestsRemaining = int.Parse(headerVal.Single());
-            }
-            if (response.Headers.TryGetValues("ETag", out headerVal))
-            {
-                EtagNoChanges = headerVal.Single();
             }
             if (!response.IsSuccessStatusCode)
             {
@@ -128,11 +129,20 @@ namespace SemDiff.Core
                     case HttpStatusCode.NotModified:
                         //Returns null because we have nothing to update if nothing was modified
                         return null;
+
                     default:
                         var str = await response.Content.ReadAsStringAsync();
                         var error = DeserializeWithErrorHandling<GitHubError>(str);
                         throw error.ToException();
                 }
+            }
+            if (etag != null && response.Headers.TryGetValues("ETag", out headerVal))
+            {
+                etag.Value = headerVal.Single();
+            }
+            if (pages != null)
+            {
+                pages.Value = response.Headers.TryGetValues("Link", out headerVal) ? ParseNextLink(headerVal) : null;
             }
             return await response.Content.ReadAsStringAsync();
         }
@@ -162,12 +172,48 @@ namespace SemDiff.Core
             File.WriteAllText(path, JsonConvert.SerializeObject(currentSaved));
         }
 
+        private static Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
+
+        private static string ParseNextLink(IEnumerable<string> links)
+        {
+            foreach (var l in links)
+            {
+                var match = nextLinkPattern.Match(l);
+                if (match.Success)
+                {
+                    return match.Groups[1].Value;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Gets each page of the pull request list from GitHub.
+        /// Once the list is complete, get all the pull request files for each pull request.
+        /// </summary>
+        /// <returns>List of pull request information.</returns>
         public async Task<IList<PullRequest>> GetPullRequestsAsync()
         {
             //TODO: Investigate using the If-Modified-Since and If-None-Match headers https://developer.github.com/v3/#conditional-requests
             var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
-            var pullRequests = await HttpGetAsync<IList<PullRequest>>(url);
-            if(pullRequests == null)
+            var etag = Ref.Create(EtagNoChanges);
+            var pagination = Ref.Create<string>(null);
+            var paginationPRs = await HttpGetAsync<IList<PullRequest>>(url, etag, pagination);
+            EtagNoChanges = etag.Value;
+            var pullRequests = paginationPRs;
+            while (paginationPRs != null)
+            {
+                paginationPRs = null;
+                if (pagination.Value != null)
+                {
+                    paginationPRs = await HttpGetAsync<IList<PullRequest>>(pagination.Value, pages: pagination);
+                    foreach (var cur in paginationPRs)
+                    {
+                        pullRequests.Add(cur);
+                    }
+                }
+            }
+            if (pullRequests == null)
             {
                 return null;
             }
@@ -238,7 +284,7 @@ namespace SemDiff.Core
 
         internal static string GetPathInCache(string repofolder, int prNum, string path, bool isAncestor = false)
         {
-            var dir = Path.Combine(repofolder, $"{prNum}", path);
+            var dir = Path.Combine(repofolder, $"{prNum}", path.Replace('/', '\\'));
 
             if (isAncestor)
             {

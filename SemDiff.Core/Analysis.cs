@@ -3,8 +3,10 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SemDiff.Core
 {
@@ -111,10 +113,52 @@ namespace SemDiff.Core
         /// </summary>
         public static IEnumerable<DetectedFalseNegative> ForFalseNegative(Repo repo, SemanticModel semanticModel)
         {
-            yield break;
-            var baseClassPath = ""; //TODO: find using semantic model
-            var pulls = GetPulls(repo, baseClassPath);
-            throw new NotImplementedException();
+            var classDeclarations = semanticModel.SyntaxTree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>();
+            var declaredSymbol = classDeclarations.Select(cds => semanticModel.GetDeclaredSymbol(cds));
+            var classBases = declaredSymbol.SelectMany(
+                    t => (t as INamedTypeSymbol)?.BaseType?.DeclaringSyntaxReferences ?? Enumerable.Empty<SyntaxReference>()
+                );
+            var classBaseNodes = Task.WhenAll(classBases.Select(sr => sr.GetSyntaxAsync())).Result.OfType<ClassDeclarationSyntax>();
+            return classBaseNodes.SelectMany(c =>
+            {
+                var relativePath = GetRelativePath(repo.LocalDirectory, c.SyntaxTree.FilePath).Replace('\\', '/'); //Standardize Directory Separator!
+                return GetPulls(repo, relativePath).SelectMany(t =>
+                {
+                    var file = t.Item1;
+                    var remotechanges = t.Item2;
+
+                    var ancestorDecs = file.Base.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>();
+                    var remoteDecs = file.File.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>();
+
+                    return MergeClassDeclarationSyntaxes(ancestorDecs, remoteDecs)
+                            .Select(ar => Diff3.Compare(ar.Item1, c, ar.Item2))
+                            .Where(dr => dr.Conflicts.Any())
+                            .Select(dr => new DetectedFalseNegative
+                            {
+                                Location = Location.None,
+                                RemoteChange = remotechanges,
+                                RemoteFile = file,
+                                TypeName = c.Identifier.ToString(),
+                            });
+                });
+            });
+        }
+
+        private static IEnumerable<Tuple<ClassDeclarationSyntax, ClassDeclarationSyntax>> MergeClassDeclarationSyntaxes(IEnumerable<ClassDeclarationSyntax> left, IEnumerable<ClassDeclarationSyntax> rightE)
+        {
+            var right = rightE.ToList();
+            foreach (var l in left)
+            {
+                //Name of class should give a reasonably good idea of if they are the same class
+                //This will ignore any renaming of the class, and will likely have problems with
+                //Template classes
+                var r = right.FirstOrDefault(rc => rc.Identifier.Text == l.Identifier.Text);
+                if (r != null)
+                {
+                    right.Remove(r);
+                    yield return Tuple.Create(l, r);
+                }
+            }
         }
 
         internal static string GetRelativePath(string localDirectory, string filePath)

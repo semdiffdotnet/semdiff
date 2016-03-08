@@ -17,5 +17,11 @@ namespace SemDiff.Core
         public RemoteChanges RemoteChange { get; internal set; }
         public RemoteFile RemoteFile { get; internal set; }
         public ConflictTypes ConflictType { get; internal set; }
+
+        public override string ToString()
+        {
+            return $@"{nameof(DetectedFalsePositive)}: Location = {Location}, RemoteChange = {RemoteChange?.Url}, { ""
+                }RemoteFile = {RemoteFile.Filename}, ConflictType = {ConflictType}";
+        }
     }
 }

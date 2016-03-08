@@ -131,6 +131,7 @@
     <Compile Include="Configuration\AuthenticationElement.cs" />
     <Compile Include="Configuration\AuthenticationSection.cs" />
     <Compile Include="Analysis.cs" />
+    <Compile Include="DataStore.cs" />
     <Compile Include="DetectedFalseNegative.cs" />
     <Compile Include="DetectedFalsePositive.cs" />
     <Compile Include="Diagnostics.cs" />
@@ -141,6 +142,7 @@
     <Compile Include="Exceptions\GitHubRateLimitExceededException.cs" />
     <Compile Include="Exceptions\GitHubDeserializationException.cs" />
     <Compile Include="Exceptions\GitHubUrlNotFoundException.cs" />
+    <Compile Include="Ref.cs" />
     <Compile Include="RemoteFile.cs" />
     <Compile Include="Conflict.cs" />
     <Compile Include="SemDiffAnalyzer.cs" />
