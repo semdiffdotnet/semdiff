@@ -42,6 +42,7 @@ namespace SemDiff.Core
                 AuthToken = authToken;
                 Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
             }
+            GetCurrentSaved();
         }
 
         public string AuthToken { get; set; }
@@ -52,7 +53,33 @@ namespace SemDiff.Core
         public int RequestsLimit { get; private set; }
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
+        public IList<PullRequest> CurrentSaved { get; set; }
         public string EtagNoChanges { get; set; }
+        public string JsonFileName { get; } = "LocalList.json";
+
+        internal void GetCurrentSaved()
+        {
+            try
+            {
+                var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+                path = Path.Combine(path, JsonFileName);
+                var json = File.ReadAllText(path);
+                CurrentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
+            }
+            catch(Exception ex)
+            {
+                Logger.Error($"{ex.GetType().Name}: Couldn't load {JsonFileName} because {ex.Message}");
+            }
+        }
+
+        public void UpdateLocalSavedList()
+        {
+            var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            path = Path.Combine(path, JsonFileName);
+            new FileInfo(path).Directory.Create();
+            File.WriteAllText(path, JsonConvert.SerializeObject(CurrentSaved));
+        }
+
 
         /// <summary>
         /// Makes a request to github to update RequestsRemaining and RequestsLimit
@@ -143,6 +170,22 @@ namespace SemDiff.Core
             return null;
         }
 
+        private void DeletePRsFromDisk(IEnumerable<PullRequest> prs)
+        {
+            foreach (var pr in prs)
+            {
+                var dir = Path.Combine(RepoFolder, $"{pr.Number}");
+                try
+                {
+                    Directory.Delete(dir, true);
+                }
+                catch(Exception ex)
+                {
+                    Logger.Error($"{ex.GetType().Name}: Couldn't load {JsonFileName} because {ex.Message}");
+                }
+            }
+        }
+
         /// <summary>
         /// Gets each page of the pull request list from GitHub.
         /// Once the list is complete, get all the pull request files for each pull request.
@@ -173,6 +216,24 @@ namespace SemDiff.Core
             {
                 return null;
             }
+            if (CurrentSaved != null)
+            {
+                var removePRs = CurrentSaved;
+                foreach (var pr in pullRequests)
+                {
+                    foreach (var prRemove in removePRs)
+                    {
+                        if (pr.Number == prRemove.Number)
+                        {
+                            pr.LastWrite = prRemove.LastWrite;
+                            removePRs.Remove(prRemove);
+                            break;
+                        }
+                    }
+                }
+                DeletePRsFromDisk(removePRs);
+            }
+            CurrentSaved = pullRequests;
             return await Task.WhenAll(pullRequests.Select(async pr =>
             {
                 var filePagination = Ref.Create<string>(null);
@@ -200,6 +261,8 @@ namespace SemDiff.Core
         {
             foreach (var current in pr.Files)
             {
+                if (pr.LastWrite >= pr.Updated)
+                    return;
                 var csFileTokens = current.Filename.Split('.');
                 if (csFileTokens.Last() == "cs")
                 {
@@ -214,7 +277,7 @@ namespace SemDiff.Core
                             Logger.Info($"The mythical 'changed' status has occured! {pr.Number}:{current.Filename}");
                             goto case Files.StatusEnum.Modified; //Effectivly falls through to the following
 
-                        case Files.StatusEnum.Modified:
+                        case Files.StatusEnum.Modified: 
                             var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
                             var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
                             await Task.WhenAll(headTsk, ancTsk);
@@ -222,6 +285,7 @@ namespace SemDiff.Core
                     }
                 }
             }
+            pr.LastWrite = DateTime.UtcNow;
         }
 
         private async Task DownloadFileAsync(int prNum, string path, string sha, bool isAncestor = false)
@@ -267,7 +331,7 @@ namespace SemDiff.Core
 
             [JsonProperty("updated_at")]
             public DateTime Updated { get; set; }
-
+            public DateTime LastWrite { get; set; } = DateTime.MinValue;
             [JsonProperty("html_url")]
             public string Url { get; set; }
 
