@@ -33,7 +33,6 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
             RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
-            JsonFileName = "LocalList.json";
             if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
             {
                 AuthUsername = authUsername;
@@ -53,15 +52,15 @@ namespace SemDiff.Core
         public string RepoFolder { get; set; }
         public string EtagNoChanges { get; set; }
         public IList<PullRequest> currentSaved { get; set; }
-        public string JsonFileName { get; set; }
+        public string JsonFileName { get; } = "LocalList.json";
 
 
-        private void GetCurrentSaved()
+        internal void GetCurrentSaved()
         {
             try
             {
                 var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
-                path += Path.DirectorySeparatorChar + JsonFileName;
+                path = Path.Combine(path, JsonFileName);
                 var json = File.ReadAllText(path);
                 currentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
             }
@@ -138,7 +137,7 @@ namespace SemDiff.Core
             return await response.Content.ReadAsStringAsync();
         }
         
-        private void removeUnusedPRs(IEnumerable<PullRequest> prs)
+        private void DeletePRsFromDisk(IEnumerable<PullRequest> prs)
         {
             foreach(var pr in prs)
             {
@@ -152,10 +151,13 @@ namespace SemDiff.Core
             }
             
         }
-        private void UpdateLocalSavedList()
+        /// <summary>
+        /// Creates a local Json file with all pull request information
+        /// </summary>
+        public void UpdateLocalSavedList()
         {
             var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
-            path += Path.DirectorySeparatorChar + JsonFileName;
+            path = Path.Combine(path, JsonFileName);
             new FileInfo(path).Directory.Create();
             File.WriteAllText(path, JsonConvert.SerializeObject(currentSaved));
         }
@@ -183,7 +185,7 @@ namespace SemDiff.Core
                         }
                     }
                 }
-                removeUnusedPRs(removePRs);
+                DeletePRsFromDisk(removePRs);
             }
             currentSaved = pullRequests;
             
@@ -192,7 +194,6 @@ namespace SemDiff.Core
                 pr.LastWrite = DateTime.Now;
                 var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
                 pr.Files = files;
-                UpdateLocalSavedList();
                 return pr;
             }));
         }
