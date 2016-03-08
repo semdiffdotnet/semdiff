@@ -42,6 +42,7 @@ namespace SemDiff.Core
                 AuthToken = authToken;
                 Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
             }
+            GetCurrentSaved();
         }
 
         public string AuthToken { get; set; }
@@ -52,7 +53,7 @@ namespace SemDiff.Core
         public int RequestsLimit { get; private set; }
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
-        public IList<PullRequest> currentSaved { get; set; }
+        public IList<PullRequest> CurrentSaved { get; set; }
         public string EtagNoChanges { get; set; }
         public string JsonFileName { get; } = "LocalList.json";
 
@@ -63,7 +64,7 @@ namespace SemDiff.Core
                 var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
                 path = Path.Combine(path, JsonFileName);
                 var json = File.ReadAllText(path);
-                currentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
+                CurrentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
             }
             catch
             {
@@ -77,7 +78,7 @@ namespace SemDiff.Core
             var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
             path = Path.Combine(path, JsonFileName);
             new FileInfo(path).Directory.Create();
-            File.WriteAllText(path, JsonConvert.SerializeObject(currentSaved));
+            File.WriteAllText(path, JsonConvert.SerializeObject(CurrentSaved));
         }
 
 
@@ -200,9 +201,9 @@ namespace SemDiff.Core
             {
                 return null;
             }
-            if (currentSaved != null)
+            if (CurrentSaved != null)
             {
-                var removePRs = currentSaved;
+                var removePRs = CurrentSaved;
                 foreach (var pr in pullRequests)
                 {
                     foreach (var prRemove in removePRs)
@@ -217,7 +218,7 @@ namespace SemDiff.Core
                 //TODO - Implement
                 //DeletePRsFromDisk(removePRs);
             }
-            currentSaved = pullRequests;
+            CurrentSaved = pullRequests;
             return await Task.WhenAll(pullRequests.Select(async pr =>
             {
                 var filePagination = Ref.Create<string>(null);

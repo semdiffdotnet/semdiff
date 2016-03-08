@@ -161,9 +161,9 @@ namespace SemDiff.Test
             Assert.IsTrue(File.Exists(path));
             var json = File.ReadAllText(path);
             var currentSaved = JsonConvert.DeserializeObject<IList<GitHub.PullRequest>>(json);
-            Assert.AreEqual(github.currentSaved.Count, currentSaved.Count);
+            Assert.AreEqual(github.CurrentSaved.Count, currentSaved.Count);
             var local = currentSaved.First();
-            var gPR = github.currentSaved.First();
+            var gPR = github.CurrentSaved.First();
             Assert.AreEqual(local.Number, gPR.Number);
             Assert.AreEqual(local.State, gPR.State);
             Assert.AreEqual(local.Title, gPR.Title);
@@ -197,9 +197,9 @@ namespace SemDiff.Test
                 Base = requests.First().Base,
                 Files = requests.First().Files
             };
-            var currentSaved = github.currentSaved;
+            var currentSaved = github.CurrentSaved;
             currentSaved.Add(prZero);
-            github.currentSaved = currentSaved;
+            github.CurrentSaved = currentSaved;
             path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
             path = Path.Combine(path, github.JsonFileName);
             new FileInfo(path).Directory.Create();
@@ -214,7 +214,7 @@ namespace SemDiff.Test
             var requests = github.GetPullRequestsAsync().Result;
             github.UpdateLocalSavedList();
             var newgithub = new GitHub(owner, repository);
-            Assert.IsNotNull(newgithub.currentSaved);
+            Assert.IsNotNull(newgithub.CurrentSaved);
         }
         [TestMethod]
         public void NoUnnecessaryDownloading()
