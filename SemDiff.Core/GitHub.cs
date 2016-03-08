@@ -173,14 +173,15 @@ namespace SemDiff.Core
             {
                 return null;
             }
-            var filePagination = Ref.Create<string>(null);
             return await Task.WhenAll(pullRequests.Select(async pr =>
             {
+                var filePagination = Ref.Create<string>(null);
                 var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files",pages: filePagination);
                 pr.Files = files;
-                while(pagination.Value != null)
+                files = null;
+                while(filePagination.Value != null)
                 {
-                    files = await HttpGetAsync<IList<Files>>(pagination.Value, pages: filePagination);
+                    files = await HttpGetAsync<IList<Files>>(filePagination.Value, pages: filePagination);
                     foreach(var cur in files)
                     {
                         pr.Files.Add(cur);
