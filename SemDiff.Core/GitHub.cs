@@ -277,13 +277,17 @@ namespace SemDiff.Core
                             goto case Files.StatusEnum.Modified; //Effectivly falls through to the following
 
                         case Files.StatusEnum.Modified:
-                            var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
-                            var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
-                            await Task.WhenAll(headTsk, ancTsk);
+                            if (pr.LastWrite < pr.Updated)
+                            {
+                                var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
+                                var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
+                                await Task.WhenAll(headTsk, ancTsk);
+                            }
                             break;
                     }
                 }
             }
+            pr.LastWrite = DateTime.UtcNow;
         }
 
         private async Task DownloadFileAsync(int prNum, string path, string sha, bool isAncestor = false)
