@@ -210,6 +210,10 @@ namespace SemDiff.Core
                         case Files.StatusEnum.Renamed: //Not sure how to handle this one...
                             break;
 
+                        case Files.StatusEnum.Changed:
+                            Logger.Info($"The mythical 'changed' status has occured! {pr.Number}:{current.Filename}");
+                            goto case Files.StatusEnum.Modified; //Effectivly falls through to the following
+
                         case Files.StatusEnum.Modified:
                             var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
                             var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
@@ -279,7 +283,11 @@ namespace SemDiff.Core
                     Date = Updated,
                     Title = Title,
                     Url = Url,
-                    Files = Files.Where(f => f.Status == GitHub.Files.StatusEnum.Modified).Where(f => f.Filename.Split('.').Last() == "cs").Select(f => f.ToRemoteFile(repofolder, Number)).ToList(),
+                    Files = Files
+                        .Where(f => f.Status == GitHub.Files.StatusEnum.Modified || f.Status == GitHub.Files.StatusEnum.Changed)
+                        .Where(f => f.Filename.Split('.').Last() == "cs")
+                        .Select(f => f.ToRemoteFile(repofolder, Number))
+                        .ToList(),
                 };
             }
         }
@@ -310,7 +318,12 @@ namespace SemDiff.Core
                 Added,
                 Modified,
                 Removed,
-                Renamed
+                Renamed,
+
+                //Mostly undocumented, occurs rarely
+                //Seems to show up when only the file permissions were changed
+                //or if there are too many files it the pull request (more than about 200)
+                Changed
             }
         }
 
