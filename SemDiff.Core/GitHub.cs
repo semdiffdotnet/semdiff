@@ -225,6 +225,7 @@ namespace SemDiff.Core
                     {
                         if (pr.Number == prRemove.Number)
                         {
+                            pr.LastWrite = prRemove.LastWrite;
                             removePRs.Remove(prRemove);
                             break;
                         }
@@ -260,6 +261,8 @@ namespace SemDiff.Core
         {
             foreach (var current in pr.Files)
             {
+                if (pr.LastWrite >= pr.Updated)
+                    return;
                 var csFileTokens = current.Filename.Split('.');
                 if (csFileTokens.Last() == "cs")
                 {
@@ -274,10 +277,7 @@ namespace SemDiff.Core
                             Logger.Info($"The mythical 'changed' status has occured! {pr.Number}:{current.Filename}");
                             goto case Files.StatusEnum.Modified; //Effectivly falls through to the following
 
-                        case Files.StatusEnum.Modified:
-
-                            if (pr.LastWrite >= pr.Updated)
-                                return;
+                        case Files.StatusEnum.Modified: 
                             var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
                             var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
                             await Task.WhenAll(headTsk, ancTsk);
@@ -331,7 +331,7 @@ namespace SemDiff.Core
 
             [JsonProperty("updated_at")]
             public DateTime Updated { get; set; }
-            public DateTime LastWrite { get; set; }
+            public DateTime LastWrite { get; set; } = DateTime.MinValue;
             [JsonProperty("html_url")]
             public string Url { get; set; }
 
