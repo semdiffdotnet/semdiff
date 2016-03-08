@@ -171,6 +171,23 @@ namespace SemDiff.Core
             return null;
         }
 
+        private void DeletePRsFromDisk(IEnumerable<PullRequest> prs)
+        {
+            foreach (var pr in prs)
+            {
+                var dir = Path.Combine(RepoFolder, $"{pr.Number}");
+                try
+                {
+                    Directory.Delete(dir, true);
+                }
+                catch
+                {
+                    //Does nothing if there is no directory to delete.
+                }
+            }
+
+        }
+
         /// <summary>
         /// Gets each page of the pull request list from GitHub.
         /// Once the list is complete, get all the pull request files for each pull request.
@@ -215,8 +232,7 @@ namespace SemDiff.Core
                         }
                     }
                 }
-                //TODO - Implement
-                //DeletePRsFromDisk(removePRs);
+                DeletePRsFromDisk(removePRs);
             }
             CurrentSaved = pullRequests;
             return await Task.WhenAll(pullRequests.Select(async pr =>
