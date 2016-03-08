@@ -38,8 +38,8 @@ namespace SemDiff.Test
                 Assert.Inconclusive("Thou hast ran out of requests");
             }
             var requests = github.GetPullRequestsAsync().Result;
-            Assert.AreEqual(4, requests.Count);
-            var r = requests.First();
+            Assert.AreEqual(5, requests.Count);
+            var r = requests.ElementAt(requests.Count-4);
             if (r.Number == 4)
             {
                 Assert.AreEqual(r.Locked, false);
@@ -80,6 +80,21 @@ namespace SemDiff.Test
             github.RepoName = "roslyn";
             var roslynPRs = github.GetPullRequestsAsync().Result;
             Assert.IsTrue(roslynPRs.Count > 30);
+        }
+        [TestMethod]
+        public void FilesPagination()
+        {
+            if (github.RequestsRemaining == 0)
+            {
+                Assert.Inconclusive("Thou hast ran out of requests");
+            }
+            var PRs = github.GetPullRequestsAsync().Result;
+            Assert.IsTrue(PRs.Count >= 5);
+            foreach(var pr in PRs)
+            {
+                if (pr.Number == 5)
+                    Assert.AreEqual(40,pr.Files.Count);
+            }
         }
         [TestMethod]
         public void GetFilesFromGitHub()

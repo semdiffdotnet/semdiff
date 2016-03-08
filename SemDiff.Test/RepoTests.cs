@@ -21,11 +21,10 @@ namespace SemDiff.Test
         {
             CurlyBroccoli.UpdateRemoteChangesAsync().Wait();
             var pulls = CurlyBroccoli.RemoteChangesData.Values.ToList();
-            Assert.AreEqual(4, pulls.Count);
+            Assert.AreEqual(5, pulls.Count);
             foreach (var p in pulls)
             {
                 Assert.IsNotNull(p.Files);
-                Assert.IsTrue(p.Files.Count() > 0);
                 Assert.IsNotNull(p.Title);
                 Assert.AreNotEqual(default(DateTime), p.Date);
                 foreach (var f in p.Files)
