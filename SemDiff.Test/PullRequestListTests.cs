@@ -38,8 +38,8 @@ namespace SemDiff.Test
                 Assert.Inconclusive("Thou hast ran out of requests");
             }
             var requests = github.GetPullRequestsAsync().Result;
-            Assert.AreEqual(4, requests.Count);
-            var r = requests.First();
+            Assert.AreEqual(5, requests.Count);
+            var r = requests.ElementAt(requests.Count-4);
             if (r.Number == 4)
             {
                 Assert.AreEqual(r.Locked, false);
@@ -93,7 +93,7 @@ namespace SemDiff.Test
             foreach(var pr in PRs)
             {
                 if (pr.Number == 5)
-                    Assert.IsTrue(pr.Files.Count == 40);
+                    Assert.AreEqual(40,pr.Files.Count);
             }
         }
         [TestMethod]
