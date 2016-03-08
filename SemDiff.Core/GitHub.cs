@@ -52,7 +52,34 @@ namespace SemDiff.Core
         public int RequestsLimit { get; private set; }
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
+        public IList<PullRequest> currentSaved { get; set; }
         public string EtagNoChanges { get; set; }
+        public string JsonFileName { get; } = "LocalList.json";
+
+        internal void GetCurrentSaved()
+        {
+            try
+            {
+                var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+                path = Path.Combine(path, JsonFileName);
+                var json = File.ReadAllText(path);
+                currentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
+            }
+            catch
+            {
+                //Catch is only here to be used if the json file does not exist. 
+                //If it doesn't exist, ignore.
+            }
+        }
+
+        public void UpdateLocalSavedList()
+        {
+            var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            path = Path.Combine(path, JsonFileName);
+            new FileInfo(path).Directory.Create();
+            File.WriteAllText(path, JsonConvert.SerializeObject(currentSaved));
+        }
+
 
         /// <summary>
         /// Makes a request to github to update RequestsRemaining and RequestsLimit
