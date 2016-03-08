@@ -68,8 +68,7 @@ namespace SemDiff.Core
             }
             catch
             {
-                //Catch is only here to be used if the json file does not exist. 
-                //If it doesn't exist, ignore.
+                
             }
         }
 
@@ -260,6 +259,7 @@ namespace SemDiff.Core
         /// <param name="pr">the PullRequest for which the files need to be downloaded</param>
         public async Task DownloadFilesAsync(PullRequest pr)
         {
+            var updated = false;
             foreach (var current in pr.Files)
             {
                 var csFileTokens = current.Filename.Split('.');
@@ -279,6 +279,7 @@ namespace SemDiff.Core
                         case Files.StatusEnum.Modified:
                             if (pr.LastWrite < pr.Updated)
                             {
+                                updated = true;
                                 var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
                                 var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
                                 await Task.WhenAll(headTsk, ancTsk);
@@ -287,7 +288,8 @@ namespace SemDiff.Core
                     }
                 }
             }
-            pr.LastWrite = DateTime.UtcNow;
+            if(updated == true)
+                pr.LastWrite = DateTime.UtcNow;
         }
 
         private async Task DownloadFileAsync(int prNum, string path, string sha, bool isAncestor = false)
