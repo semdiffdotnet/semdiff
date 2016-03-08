@@ -200,6 +200,24 @@ namespace SemDiff.Core
             {
                 return null;
             }
+            if (currentSaved != null)
+            {
+                var removePRs = currentSaved;
+                foreach (var pr in pullRequests)
+                {
+                    foreach (var prRemove in removePRs)
+                    {
+                        if (pr.Number == prRemove.Number)
+                        {
+                            removePRs.Remove(prRemove);
+                            break;
+                        }
+                    }
+                }
+                //TODO - Implement
+                //DeletePRsFromDisk(removePRs);
+            }
+            currentSaved = pullRequests;
             return await Task.WhenAll(pullRequests.Select(async pr =>
             {
                 var filePagination = Ref.Create<string>(null);
@@ -294,7 +312,7 @@ namespace SemDiff.Core
 
             [JsonProperty("updated_at")]
             public DateTime Updated { get; set; }
-
+            public DateTime LastWrite { get; set; }
             [JsonProperty("html_url")]
             public string Url { get; set; }
 
