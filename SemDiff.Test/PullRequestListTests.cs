@@ -201,6 +201,30 @@ namespace SemDiff.Test
             var newgithub = new GitHub(owner, repository);
             Assert.IsNotNull(newgithub.currentSaved);
         }
-
+        [TestMethod]
+        public void NoUnnecessaryDownloading()
+        {
+            var requests = github.GetPullRequestsAsync().Result;
+            var path = "";
+            foreach (var r in requests)
+            {
+                github.DownloadFilesAsync(r).Wait();
+                if (r.Number == 1)
+                {
+                    foreach (var files in r.Files)
+                    {
+                        path = files.Filename.Replace('/', Path.DirectorySeparatorChar);
+                    }
+                }
+            }
+            var fileLastUpdated = File.GetLastWriteTimeUtc(path);
+            github.EtagNoChanges = null;
+            requests = github.GetPullRequestsAsync().Result;
+            foreach (var r in requests)
+            {
+                github.DownloadFilesAsync(r).Wait();
+            }
+            Assert.AreEqual(fileLastUpdated, File.GetLastWriteTimeUtc(path));
+        }
     }
 }
