@@ -237,7 +237,6 @@ namespace SemDiff.Core
             
             return await Task.WhenAll(pullRequests.Select(async pr =>
             {
-                pr.LastWrite = DateTime.Now;
                 var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
                 pr.Files = files;
                 return pr;

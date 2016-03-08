@@ -40,8 +40,8 @@ namespace SemDiff.Test
                 Assert.Inconclusive("Thou hast ran out of requests");
             }
             var requests = github.GetPullRequestsAsync().Result;
-            Assert.AreEqual(4, requests.Count);
-            var r = requests.First();
+            Assert.AreEqual(5, requests.Count);
+            var r = requests.ElementAt(requests.Count-4);
             if (r.Number == 4)
             {
                 Assert.AreEqual(r.Locked, false);
@@ -109,7 +109,7 @@ namespace SemDiff.Test
 
                         dir = Path.Combine(dir, r.Number.ToString(), f.Filename);
                     }
-                    using (var file = new System.IO.StreamReader(dir))
+                    using (var file = new StreamReader(dir))
                     {
                         while ((line = file.ReadLine()) != null)
                         {
