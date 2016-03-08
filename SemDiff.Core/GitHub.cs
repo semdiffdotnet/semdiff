@@ -35,13 +35,13 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
             RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
-
             if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
             {
                 AuthUsername = authUsername;
                 AuthToken = authToken;
                 Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
             }
+            GetCurrentSaved();
         }
 
         public string AuthToken { get; set; }
@@ -53,6 +53,25 @@ namespace SemDiff.Core
         public HttpClient Client { get; private set; }
         public string RepoFolder { get; set; }
         public string EtagNoChanges { get; set; }
+        public IList<PullRequest> currentSaved { get; set; }
+        public string JsonFileName { get; } = "LocalList.json";
+
+
+        internal void GetCurrentSaved()
+        {
+            try
+            {
+                var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+                path = Path.Combine(path, JsonFileName);
+                var json = File.ReadAllText(path);
+                currentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
+            }
+            catch
+            {
+                //Catch is only here to be used if the json file does not exist. 
+                //If it doesn't exist, ignore.
+            }
+        }
 
         /// <summary>
         /// Makes a request to github to update RequestsRemaining and RequestsLimit
@@ -127,6 +146,31 @@ namespace SemDiff.Core
             }
             return await response.Content.ReadAsStringAsync();
         }
+        
+        private void DeletePRsFromDisk(IEnumerable<PullRequest> prs)
+        {
+            foreach(var pr in prs)
+            {
+                var dir = Path.Combine(RepoFolder, $"{pr.Number}");
+                try {
+                    Directory.Delete(dir, true);
+                } catch
+                {
+                    //Does nothing if there is no directory to delete.
+                }
+            }
+            
+        }
+        /// <summary>
+        /// Creates a local Json file with all pull request information
+        /// </summary>
+        public void UpdateLocalSavedList()
+        {
+            var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            path = Path.Combine(path, JsonFileName);
+            new FileInfo(path).Directory.Create();
+            File.WriteAllText(path, JsonConvert.SerializeObject(currentSaved));
+        }
 
         private static Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
 
@@ -173,20 +217,28 @@ namespace SemDiff.Core
             {
                 return null;
             }
-            return await Task.WhenAll(pullRequests.Select(async pr =>
+            if (currentSaved != null)
             {
-                var filePagination = Ref.Create<string>(null);
-                var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files",pages: filePagination);
-                pr.Files = files;
-                files = null;
-                while(filePagination.Value != null)
+                var removePRs = currentSaved;     
+                foreach(var pr in pullRequests)
                 {
-                    files = await HttpGetAsync<IList<Files>>(filePagination.Value, pages: filePagination);
-                    foreach(var cur in files)
+                    foreach(var prRemove in removePRs)
                     {
-                        pr.Files.Add(cur);
+                        if (pr.Number == prRemove.Number)
+                        {
+                            removePRs.Remove(prRemove);
+                            break;
+                        }
                     }
                 }
+                DeletePRsFromDisk(removePRs);
+            }
+            currentSaved = pullRequests;
+            
+            return await Task.WhenAll(pullRequests.Select(async pr =>
+            {
+                var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
+                pr.Files = files;
                 return pr;
             }));
         }
@@ -215,13 +267,17 @@ namespace SemDiff.Core
                             goto case Files.StatusEnum.Modified; //Effectivly falls through to the following
 
                         case Files.StatusEnum.Modified:
-                            var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
-                            var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
-                            await Task.WhenAll(headTsk, ancTsk);
+                            if (pr.LastWrite < pr.Updated)
+                            {
+                                var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
+                                var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
+                                await Task.WhenAll(headTsk, ancTsk);
+                            }
                             break;
                     }
                 }
             }
+            pr.LastWrite = DateTime.UtcNow;
         }
 
         private async Task DownloadFileAsync(int prNum, string path, string sha, bool isAncestor = false)
@@ -267,7 +323,7 @@ namespace SemDiff.Core
 
             [JsonProperty("updated_at")]
             public DateTime Updated { get; set; }
-
+            public DateTime LastWrite { get; set; }
             [JsonProperty("html_url")]
             public string Url { get; set; }
 

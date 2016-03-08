@@ -3,6 +3,8 @@ using SemDiff.Core;
 using System;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace SemDiff.Test
 {
@@ -82,21 +84,6 @@ namespace SemDiff.Test
             Assert.IsTrue(roslynPRs.Count > 30);
         }
         [TestMethod]
-        public void FilesPagination()
-        {
-            if (github.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
-            var PRs = github.GetPullRequestsAsync().Result;
-            Assert.IsTrue(PRs.Count >= 5);
-            foreach(var pr in PRs)
-            {
-                if (pr.Number == 5)
-                    Assert.AreEqual(40,pr.Files.Count);
-            }
-        }
-        [TestMethod]
         public void GetFilesFromGitHub()
         {
             if (github.RequestsRemaining == 0)
@@ -122,7 +109,7 @@ namespace SemDiff.Test
 
                         dir = Path.Combine(dir, r.Number.ToString(), f.Filename);
                     }
-                    using (var file = new System.IO.StreamReader(dir))
+                    using (var file = new StreamReader(dir))
                     {
                         while ((line = file.ReadLine()) != null)
                         {
@@ -145,6 +132,99 @@ namespace SemDiff.Test
                 }
             }
             Assert.AreEqual(fourWasFound, true);
+        }
+        [TestMethod]
+        public void UpdateLocalSaved()
+        {
+            github.GetPullRequestsAsync();
+            var path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            path = Path.Combine(path, github.JsonFileName);
+            new FileInfo(path).Directory.Create();
+            if(File.Exists(path))
+                File.Delete(path);
+            github.UpdateLocalSavedList();
+            Assert.IsTrue(File.Exists(path));
+            var json = File.ReadAllText(path);
+            var currentSaved = JsonConvert.DeserializeObject<IList<GitHub.PullRequest>>(json);
+            Assert.AreEqual(github.currentSaved.Count, currentSaved.Count);
+            var local = currentSaved.First();
+            var gPR = github.currentSaved.First();
+            Assert.AreEqual(local.Number, gPR.Number);
+            Assert.AreEqual(local.State, gPR.State);
+            Assert.AreEqual(local.Title, gPR.Title);
+            Assert.AreEqual(local.Locked, gPR.Locked);
+            Assert.AreEqual(local.Updated, gPR.Updated);
+            Assert.AreEqual(local.LastWrite, gPR.LastWrite);
+            Assert.AreEqual(local.Url, gPR.Url);
+            Assert.IsNotNull(local.User);
+            Assert.IsNotNull(local.Head);
+            Assert.IsNotNull(local.Base);
+            Assert.IsNotNull(local.Files);
+        }
+        [TestMethod]
+        public void RemoveUnusedLocalFiles()
+        {
+            var path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            path = Path.Combine(path, "0");
+            Directory.CreateDirectory(path);
+            var requests = github.GetPullRequestsAsync().Result;
+            var prZero = new GitHub.PullRequest
+            {
+                Number = 0,
+                State = requests.First().State,
+                Title = requests.First().Title,
+                Locked = requests.First().Locked,
+                Updated = requests.First().Updated,
+                LastWrite = requests.First().LastWrite,
+                Url = requests.First().Url,
+                User = requests.First().User,
+                Head = requests.First().Head,
+                Base = requests.First().Base,
+                Files = requests.First().Files
+            };
+            var currentSaved = github.currentSaved;
+            currentSaved.Add(prZero);
+            github.currentSaved = currentSaved;
+            path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            path = Path.Combine(path, github.JsonFileName);
+            new FileInfo(path).Directory.Create();
+            File.WriteAllText(path, JsonConvert.SerializeObject(currentSaved));
+            github.GetCurrentSaved();
+            requests = github.GetPullRequestsAsync().Result;
+            Assert.IsFalse(Directory.Exists(path));
+        }
+        [TestMethod]
+        public void LastSessionLocalFiles()
+        {
+            var requests = github.GetPullRequestsAsync().Result;
+            github.UpdateLocalSavedList();
+            var newgithub = new GitHub(owner, repository);
+            Assert.IsNotNull(newgithub.currentSaved);
+        }
+        [TestMethod]
+        public void NoUnnecessaryDownloading()
+        {
+            var requests = github.GetPullRequestsAsync().Result;
+            var path = "";
+            foreach (var r in requests)
+            {
+                github.DownloadFilesAsync(r).Wait();
+                if (r.Number == 1)
+                {
+                    foreach (var files in r.Files)
+                    {
+                        path = files.Filename.Replace('/', Path.DirectorySeparatorChar);
+                    }
+                }
+            }
+            var fileLastUpdated = File.GetLastWriteTimeUtc(path);
+            github.EtagNoChanges = null;
+            requests = github.GetPullRequestsAsync().Result;
+            foreach (var r in requests)
+            {
+                github.DownloadFilesAsync(r).Wait();
+            }
+            Assert.AreEqual(fileLastUpdated, File.GetLastWriteTimeUtc(path));
         }
     }
 }
