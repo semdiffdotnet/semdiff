@@ -1,10 +1,24 @@
 ﻿namespace SemDiff.Core
 {
+    /// <summary>
+    /// A wrapper around Diff that adds a property that contains if the Diff was from comparing the
+    /// Local or Remote file
+    /// </summary>
     internal class DiffWithOrigin
     {
-        public static DiffWithOrigin Local(Diff diff) => new DiffWithOrigin { Diff = diff, Origin = OriginEnum.Local };
+        public static DiffWithOrigin Local(Diff diff) =>
+            new DiffWithOrigin
+            {
+                Diff = diff,
+                Origin = OriginEnum.Local
+            };
 
-        public static DiffWithOrigin Remote(Diff diff) => new DiffWithOrigin { Diff = diff, Origin = OriginEnum.Remote };
+        public static DiffWithOrigin Remote(Diff diff) =>
+            new DiffWithOrigin
+            {
+                Diff = diff,
+                Origin = OriginEnum.Remote
+            };
 
         public enum OriginEnum
         {

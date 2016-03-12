@@ -59,6 +59,7 @@ namespace SemDiff.Test
             }
             Assert.AreEqual("895d2ca038344aacfbcf3902e978de73a7a763fe", r.Head.Sha);
         }
+
         [TestMethod]
         public void EtagNotModified()
         {
@@ -83,6 +84,7 @@ namespace SemDiff.Test
             var roslynPRs = github.GetPullRequestsAsync().Result;
             Assert.IsTrue(roslynPRs.Count > 30);
         }
+
         [TestMethod]
         public void FilesPagination()
         {
@@ -98,6 +100,7 @@ namespace SemDiff.Test
                     Assert.AreEqual(40, pr.Files.Count);
             }
         }
+
         [TestMethod]
         public void GetFilesFromGitHub()
         {
@@ -148,10 +151,11 @@ namespace SemDiff.Test
             }
             Assert.AreEqual(fourWasFound, true);
         }
+
         [TestMethod]
         public void UpdateLocalSaved()
         {
-            github.GetPullRequestsAsync();
+            github.GetPullRequestsAsync().Wait();
             var path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
             path = Path.Combine(path, github.JsonFileName);
             new FileInfo(path).Directory.Create();
@@ -176,6 +180,7 @@ namespace SemDiff.Test
             Assert.IsNotNull(local.Base);
             Assert.IsNotNull(local.Files);
         }
+
         [TestMethod]
         public void RemoveUnusedLocalFiles()
         {
@@ -210,6 +215,7 @@ namespace SemDiff.Test
             path = Path.Combine(path, "0");
             Assert.IsFalse(Directory.Exists(path));
         }
+
         [TestMethod]
         public void LastSessionLocalFiles()
         {
@@ -218,6 +224,7 @@ namespace SemDiff.Test
             var newgithub = new GitHub(owner, repository);
             Assert.IsNotNull(newgithub.CurrentSaved);
         }
+
         [TestMethod]
         public void NoUnnecessaryDownloading()
         {

@@ -1,8 +1,5 @@
-﻿using LibGit2Sharp;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SemDiff.Core;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.IO;
 using System.Linq;
 
 namespace SemDiff.Test

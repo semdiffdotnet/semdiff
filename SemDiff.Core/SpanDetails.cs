@@ -8,13 +8,18 @@ namespace SemDiff.Core
     /// </summary>
     public class SpanDetails
     {
-        public TextSpan Span { get; set; }
-        public string Text => Tree?.GetText().ToString(Span);
-        public SyntaxNode Node => Tree?.GetRoot().FindNode(Span, true, false);
-        public SyntaxTree Tree { get; set; }
-
         private SpanDetails()
         {
+        }
+
+        public SyntaxNode Node => Tree?.GetRoot().FindNode(Span, true, false);
+        public TextSpan Span { get; set; }
+        public string Text => Tree?.GetText().ToString(Span);
+        public SyntaxTree Tree { get; set; }
+
+        public override string ToString()
+        {
+            return Text;
         }
 
         internal static SpanDetails Create(int start, int end, SyntaxTree tree)
@@ -29,11 +34,6 @@ namespace SemDiff.Core
                 Tree = tree,
                 Span = span
             };
-        }
-
-        public override string ToString()
-        {
-            return Text;
         }
     }
 }

@@ -1,8 +1,6 @@
-﻿using System;
-
-namespace SemDiff.Core
+﻿namespace SemDiff.Core
 {
-    public static class Ref
+    internal static class Ref
     {
         public static Ref<T> Create<T>(T initialValue)
         {
@@ -13,7 +11,7 @@ namespace SemDiff.Core
         }
     }
 
-    public class Ref<T>
+    internal class Ref<T>
     {
         internal Ref()
         {

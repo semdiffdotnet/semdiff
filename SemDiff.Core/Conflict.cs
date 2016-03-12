@@ -7,6 +7,9 @@ using System.Text;
 
 namespace SemDiff.Core
 {
+    /// <summary>
+    /// Represents a conflicting changes between two files using a third ancestor file
+    /// </summary>
     public class Conflict
     {
         public SpanDetails Ancestor { get; set; }

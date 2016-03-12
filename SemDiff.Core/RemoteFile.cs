@@ -2,6 +2,9 @@
 
 namespace SemDiff.Core
 {
+    /// <summary>
+    /// Represents files that are part of a RemoteChange
+    /// </summary>
     public class RemoteFile
     {
         /// <summary>

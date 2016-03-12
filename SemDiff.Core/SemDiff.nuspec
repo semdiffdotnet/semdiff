@@ -16,7 +16,7 @@
       This is a community project, free and open source. Everyone is invited to contribute, fork, share and use the code. No money shall be charged by this software, nor it will be. Ever.
     </description>
     <summary>Tool which can diff C# code semantically, rather than simply by the program's text</summary>
-    <releaseNotes>Initial Release</releaseNotes>
+    <releaseNotes>Initial Packaged Release - This is a beta release and may have bugs or cause crashes</releaseNotes>
     <tags>roslyn, analyzers, semantics, merge, github, csharp</tags>
     <developmentDependency>true</developmentDependency>
     <frameworkAssemblies>
