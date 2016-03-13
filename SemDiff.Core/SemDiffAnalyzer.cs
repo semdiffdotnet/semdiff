@@ -9,13 +9,19 @@ using System.Threading.Tasks;
 
 namespace SemDiff.Core
 {
+    /// <summary>
+    /// Diagnostic Analyzer that uses semantics to detects potential conflicts with GitHub pull requests
+    /// </summary>
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class SemDiffAnalyzer : DiagnosticAnalyzer
     {
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Diagnostics.Supported;
         internal static DataStore Store { get; } = new DataStore();
 
-        //Called once per solution, to provide us an oportunity to assign callbacks
+        /// <summary>
+        /// Called once at session start to register actions in the analysis context.
+        /// </summary>
+        /// <param name="context">object that allows the assignment of callbacks</param>
         public override void Initialize(AnalysisContext context)
         {
 #if DEBUG

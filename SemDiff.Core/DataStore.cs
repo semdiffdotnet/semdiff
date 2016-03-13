@@ -6,9 +6,13 @@ using System.Linq;
 
 namespace SemDiff.Core
 {
+    /// <summary>
+    /// Simplifies the retrieval of syntax trees based on the repo they are in and allows updating
+    /// the tree without relocating the repo based on the path
+    /// </summary>
     internal class DataStore
     {
-        //At the highest level we have a dictianary that maps the asembly
+        //At the highest level we have a dictionary that maps the assembly
         //name to info about the repository and it's files
         private ImmutableDictionary<string, RepoFileSyntaxTreeInfo> store =
                 ImmutableDictionary<string, RepoFileSyntaxTreeInfo>.Empty;
@@ -18,7 +22,7 @@ namespace SemDiff.Core
         public RepoFileSyntaxTreeInfo InterlockedAddOrUpdate(string assembly,
             IEnumerable<SyntaxTree> trees, Func<SyntaxTree, Repo> getRepoFunc)
         {
-            trees = trees.ToList(); //Posibly remove
+            trees = trees.ToList(); //Possibly remove
             return ImmutableInterlocked.AddOrUpdate(ref store,
                         assembly, s => InUpdate(trees, getRepoFunc),
                         (s, r) => InUpdate(trees, getRepoFunc, r));
