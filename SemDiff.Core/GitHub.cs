@@ -66,10 +66,10 @@ namespace SemDiff.Core
         /// <param name="pr">the PullRequest for which the files need to be downloaded</param>
         public async Task DownloadFilesAsync(PullRequest pr)
         {
+            if (pr.LastWrite >= pr.Updated)
+                return;
             foreach (var current in pr.Files)
             {
-                if (pr.LastWrite >= pr.Updated)
-                    return;
                 var csFileTokens = current.Filename.Split('.');
                 if (csFileTokens.Last() == "cs")
                 {
