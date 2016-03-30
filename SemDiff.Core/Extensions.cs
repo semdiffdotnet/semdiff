@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -102,5 +104,7 @@ namespace SemDiff.Core
         /// <param name="source">list of <typeparamref name="T"/></param>
         /// <returns>A queue that contains the source</returns>
         public static Queue<T> ToQueue<T>(this IEnumerable<T> source) => new Queue<T>(source);
+
+        public static SyntaxTree ToSyntaxTree(this SyntaxNode node) => SyntaxFactory.SyntaxTree(node);
     }
 }

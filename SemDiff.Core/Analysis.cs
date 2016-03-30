@@ -19,15 +19,9 @@ namespace SemDiff.Core
         /// <param name="repo">Repo that has the remote changes that need to be checked</param>
         /// <param name="tree">The syntax tree that will be compared with syntax trees from repo</param>
         /// <param name="filePath">The path that the syntax tree was parsed from</param>
-        public static IEnumerable<DetectedFalsePositive> ForFalsePositive(Repo repo,
-            SyntaxTree tree, string filePath) //TODO: Remove filePath, retrieve from SyntaxTree instead
+        public static IEnumerable<DetectedFalsePositive> ForFalsePositive(Repo repo, SyntaxTree tree, string filePath) //TODO: Remove filePath, retrieve from SyntaxTree instead
         {
-            var relativePath = GetRelativePath(repo.LocalDirectory, filePath)
-                                        .Replace('\\', '/'); //Standardize Directory Separator!
-            if (string.IsNullOrWhiteSpace(relativePath))
-            {
-                yield break;
-            }
+            var relativePath = GetRelativePath(repo.LocalDirectory, filePath).Replace('\\', '/'); //Standardize Directory Separator!
             var pulls = GetPulls(repo, relativePath);
             foreach (var fp in pulls)
             {
@@ -41,46 +35,31 @@ namespace SemDiff.Core
                                 .Where(con => con.Ancestor.Node is MethodDeclarationSyntax))
                 {
                     var ancestor = (MethodDeclarationSyntax)c.Ancestor.Node;
-                    if (ancestor == null)
-                        break;
 
                     var localRemoved = GetInnerMethodConflicts(ancestor, c.Remote, c.Local, locs);
-                    foreach (var t in localRemoved)
+
+                    if (localRemoved != null && !localRemoved.DiffResult.Conflicts.Any()) //TODO: this doesn't filter out adding comments yet
                     {
-                        var diff3 = t.Item3;
-                        var local = t.Item2; //local removed
-                        if (!diff3.Conflicts.Any()) //TODO: this doesn't filter out adding comments yet
+                        yield return new DetectedFalsePositive
                         {
-                            //Since Inner method actually has no conflicts, we found a false positive
-                            yield return new DetectedFalsePositive
-                            {
-                                //TODO: how does one Figure out the affected region? This is difficult
-                                // because it is different for if the local file removed the method or
-                                // changed it!
-                                Location = Location.Create(tree, local.Span),
-                                RemoteFile = f,
-                                RemoteChange = p,
-                                ConflictType = DetectedFalsePositive.ConflictTypes.LocalMethodRemoved,
-                            };
-                        }
+                            Location = Location.Create(tree, localRemoved.Changed.Identifier.Span),
+                            RemoteFile = f,
+                            RemoteChange = p,
+                            ConflictType = DetectedFalsePositive.ConflictTypes.LocalMethodRemoved,
+                        };
                     }
+
                     var remoteRemoved = GetInnerMethodConflicts(ancestor, c.Local, c.Remote, rems);
-                    foreach (var t in remoteRemoved)
+
+                    if (remoteRemoved != null && !remoteRemoved.DiffResult.Conflicts.Any())
                     {
-                        var diff3 = t.Item3;
-                        var local = t.Item1; //If the remote was removed then the local was changed
-                        if (!diff3.Conflicts.Any()) //TODO: filter
+                        yield return new DetectedFalsePositive
                         {
-                            //Since Inner method actually has no conflicts, we found a false positive
-                            yield return new DetectedFalsePositive
-                            {
-                                //TODO: return more accurate location
-                                Location = Location.Create(tree, local.Span),
-                                RemoteFile = f,
-                                RemoteChange = p,
-                                ConflictType = DetectedFalsePositive.ConflictTypes.LocalMethodChanged,
-                            };
-                        }
+                            Location = Location.Create(tree, remoteRemoved.Changed.Identifier.Span),
+                            RemoteFile = f,
+                            RemoteChange = p,
+                            ConflictType = DetectedFalsePositive.ConflictTypes.LocalMethodChanged,
+                        };
                     }
                 }
             }
@@ -145,6 +124,10 @@ namespace SemDiff.Core
         internal static IEnumerable<Tuple<RemoteFile, RemoteChanges>> GetPulls(Repo repo,
                                                                             string relativePath)
         {
+            if (relativePath == null || repo == null)
+            {
+                return Enumerable.Empty<Tuple<RemoteFile, RemoteChanges>>();
+            }
             return repo.RemoteChangesData
                 .Select(kvp => kvp.Value)
                 .SelectMany(p => p.Files
@@ -171,28 +154,38 @@ namespace SemDiff.Core
             }
         }
 
-        //Tuple is Changed, Removed, and the diff result
-        private static IEnumerable<Tuple<MethodDeclarationSyntax, MethodDeclarationSyntax, Diff3Result>>
-            GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed,
-            SpanDetails removed, List<MethodDeclarationSyntax> insertedMethods)
+        private static InnerMethodConflict GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, List<MethodDeclarationSyntax> insertedMethods)
         {
-            if (string.IsNullOrWhiteSpace(removed.Text))
+            if (!string.IsNullOrWhiteSpace(removed.Text))
             {
-                var change = changed.Node as MethodDeclarationSyntax;
-                if (change != null)
-                {
-                    var methodName = change.Identifier.Text;
-                    foreach (var moved in insertedMethods
-                        .Where(method => method.Identifier.Text == methodName))
-                    {
-                        var diffRes = Diff3.Compare(ancestor, moved, change);
-                        if (!diffRes.Conflicts.Any())
-                        {
-                            yield return Tuple.Create(change, moved, diffRes);
-                        }
-                    }
-                }
+                return null;
             }
+            var change = changed.Node as MethodDeclarationSyntax;
+            if (change == null)
+            {
+                return null;
+            }
+            var moved = GetMovedMethod(insertedMethods, change);
+            var diffRes = Diff3.Compare(ancestor, moved, change);
+            return new InnerMethodConflict(ancestor, change, moved, diffRes);
+        }
+
+        private static MethodDeclarationSyntax GetMovedMethod(List<MethodDeclarationSyntax> insertedMethods, MethodDeclarationSyntax change)
+        {
+            //A unique method seems to be defined by its name and its parameter types (including type params)
+
+            var namesMatch = insertedMethods.Where(method => method.Identifier.Text == change.Identifier.Text);
+            //Note: will cause problems if parts of the signature were changed, including renaming params
+            //Note: this is a textual checking, it may or may not be better to do only compare the order and type of the parameters (same for type params)
+            var paramsMatch = namesMatch.Where(method => AreSame(method.ParameterList, change.ParameterList));
+            var typeParamsMatch = paramsMatch.Where(method => AreSame(method.TypeParameterList, change.TypeParameterList));
+
+            return typeParamsMatch.Single();
+        }
+
+        private static bool AreSame(SyntaxNode syntax1, SyntaxNode syntax2)
+        {
+            return !syntax1.ToSyntaxTree().GetChanges(syntax2.ToSyntaxTree()).Any();
         }
 
         //A move looks like a deleted method and then an added method in
@@ -221,6 +214,25 @@ namespace SemDiff.Core
                     right.Remove(r);
                     yield return Tuple.Create(l, r);
                 }
+            }
+        }
+
+        //Essentially a named tuple. This inherits is because Tuple gives us useful things like the GetHashCode, Equals, and ToString
+        private class InnerMethodConflict : Tuple<MethodDeclarationSyntax, MethodDeclarationSyntax, MethodDeclarationSyntax, Diff3Result>
+        {
+            public InnerMethodConflict(MethodDeclarationSyntax ancestor, MethodDeclarationSyntax changed, MethodDeclarationSyntax removed, Diff3Result diffresult)
+                : base(ancestor, changed, removed, diffresult)
+            { }
+
+            public MethodDeclarationSyntax Ancestor => Item1;
+            public MethodDeclarationSyntax Changed => Item2;
+            public MethodDeclarationSyntax Removed => Item3;
+            public Diff3Result DiffResult => Item4;
+
+            public enum Type
+            {
+                LocalRemoved,
+                LocalChanged
             }
         }
     }
