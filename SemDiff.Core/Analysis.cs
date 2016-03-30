@@ -31,34 +31,36 @@ namespace SemDiff.Core
                 var conflicts = Diff3.Compare(f.Base, tree, f.File);
                 var locs = GetInsertedMethods(conflicts.Local);
                 var rems = GetInsertedMethods(conflicts.Remote);
-                foreach (var c in conflicts.Conflicts //TODO: do we need to convert Conflicts to list first?
-                                .Where(con => con.Ancestor.Node is MethodDeclarationSyntax))
+
+                var methodConflicts = conflicts.Conflicts //TODO: do we need to convert Conflicts to list first?
+                                 .Where(con => con.Ancestor.Node is MethodDeclarationSyntax);
+
+                foreach (var c in methodConflicts)
                 {
                     var ancestor = (MethodDeclarationSyntax)c.Ancestor.Node;
 
-                    var localRemoved = GetInnerMethodConflicts(ancestor, c.Remote, c.Local, locs);
+                    var conflict = GetInnerMethodConflicts(ancestor, c.Remote, c.Local, locs, InnerMethodConflict.Local.Moved);
 
-                    if (localRemoved != null && !localRemoved.DiffResult.Conflicts.Any()) //TODO: this doesn't filter out adding comments yet
+                    //If the local was not moved, the local could have still been changed
+                    if (conflict == null)
                     {
-                        yield return new DetectedFalsePositive
+                        conflict = GetInnerMethodConflicts(ancestor, c.Local, c.Remote, rems, InnerMethodConflict.Local.Changed);
+                        if (conflict == null)
                         {
-                            Location = Location.Create(tree, localRemoved.Changed.Identifier.Span),
-                            RemoteFile = f,
-                            RemoteChange = p,
-                            ConflictType = DetectedFalsePositive.ConflictTypes.LocalMethodRemoved,
-                        };
+                            continue;
+                        }
                     }
 
-                    var remoteRemoved = GetInnerMethodConflicts(ancestor, c.Local, c.Remote, rems);
-
-                    if (remoteRemoved != null && !remoteRemoved.DiffResult.Conflicts.Any())
+                    if (!conflict.DiffResult.Conflicts.Any()) //TODO: this doesn't filter adding comments yet
                     {
                         yield return new DetectedFalsePositive
                         {
-                            Location = Location.Create(tree, remoteRemoved.Changed.Identifier.Span),
+                            Location = Location.Create(tree, conflict.GetLocal().Identifier.Span),
                             RemoteFile = f,
                             RemoteChange = p,
-                            ConflictType = DetectedFalsePositive.ConflictTypes.LocalMethodChanged,
+                            ConflictType = conflict.LocalLocation == InnerMethodConflict.Local.Changed
+                                         ? DetectedFalsePositive.ConflictTypes.LocalMethodChanged
+                                         : DetectedFalsePositive.ConflictTypes.LocalMethodRemoved,
                         };
                     }
                 }
@@ -154,7 +156,7 @@ namespace SemDiff.Core
             }
         }
 
-        private static InnerMethodConflict GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, List<MethodDeclarationSyntax> insertedMethods)
+        private static InnerMethodConflict GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, List<MethodDeclarationSyntax> insertedMethods, InnerMethodConflict.Local type)
         {
             if (!string.IsNullOrWhiteSpace(removed.Text))
             {
@@ -166,8 +168,12 @@ namespace SemDiff.Core
                 return null;
             }
             var moved = GetMovedMethod(insertedMethods, change);
+            if (moved == null)
+            {
+                return null;
+            }
             var diffRes = Diff3.Compare(ancestor, moved, change);
-            return new InnerMethodConflict(ancestor, change, moved, diffRes);
+            return new InnerMethodConflict(ancestor, change, moved, diffRes, type);
         }
 
         private static MethodDeclarationSyntax GetMovedMethod(List<MethodDeclarationSyntax> insertedMethods, MethodDeclarationSyntax change)
@@ -222,21 +228,27 @@ namespace SemDiff.Core
         }
 
         //Essentially a named tuple. This inherits is because Tuple gives us useful things like the GetHashCode, Equals, and ToString
-        private class InnerMethodConflict : Tuple<MethodDeclarationSyntax, MethodDeclarationSyntax, MethodDeclarationSyntax, Diff3Result>
+        private class InnerMethodConflict : Tuple<MethodDeclarationSyntax, MethodDeclarationSyntax, MethodDeclarationSyntax, Diff3Result, InnerMethodConflict.Local>
         {
-            public InnerMethodConflict(MethodDeclarationSyntax ancestor, MethodDeclarationSyntax changed, MethodDeclarationSyntax removed, Diff3Result diffresult)
-                : base(ancestor, changed, removed, diffresult)
+            public InnerMethodConflict(MethodDeclarationSyntax ancestor, MethodDeclarationSyntax changed, MethodDeclarationSyntax removed, Diff3Result diffresult, InnerMethodConflict.Local type)
+                : base(ancestor, changed, removed, diffresult, type)
             { }
 
             public MethodDeclarationSyntax Ancestor => Item1;
             public MethodDeclarationSyntax Changed => Item2;
             public MethodDeclarationSyntax Removed => Item3;
             public Diff3Result DiffResult => Item4;
+            public Local LocalLocation => Item5;
 
-            public enum Type
+            public enum Local //Which field is the local method? Needed later
             {
-                LocalRemoved,
-                LocalChanged
+                Moved,
+                Changed
+            }
+
+            internal MethodDeclarationSyntax GetLocal()
+            {
+                return LocalLocation == Local.Changed ? Changed : Removed;
             }
         }
     }
