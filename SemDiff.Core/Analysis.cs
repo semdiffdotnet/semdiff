@@ -178,14 +178,18 @@ namespace SemDiff.Core
             //Note: will cause problems if parts of the signature were changed, including renaming params
             //Note: this is a textual checking, it may or may not be better to do only compare the order and type of the parameters (same for type params)
             var paramsMatch = namesMatch.Where(method => AreSame(method.ParameterList, change.ParameterList));
-            var typeParamsMatch = paramsMatch.Where(method => AreSame(method.TypeParameterList, change.TypeParameterList));
+            var typeParamsMatch = paramsMatch.Where(m => AreSame(m.TypeParameterList, change.TypeParameterList));
 
-            return typeParamsMatch.Single();
+            return typeParamsMatch.SingleOrDefault();
         }
 
         private static bool AreSame(SyntaxNode syntax1, SyntaxNode syntax2)
         {
-            return !syntax1.ToSyntaxTree().GetChanges(syntax2.ToSyntaxTree()).Any();
+            if (syntax1 != null && syntax2 != null)
+            {
+                return !syntax1.ToSyntaxTree().GetChanges(syntax2.ToSyntaxTree()).Any();
+            }
+            else return syntax1 == syntax2; //If both are null true, else false
         }
 
         //A move looks like a deleted method and then an added method in
