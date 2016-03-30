@@ -20,7 +20,7 @@ namespace SemDiff.Core
         /// <param name="local">The syntax tree that will be compared with syntax trees from repo</param>
         public static IEnumerable<DetectedFalsePositive> ForFalsePositive(Repo repo, SyntaxTree local)
         {
-            var relativePath = GetRelativePath(repo.LocalDirectory, local.FilePath).Replace('\\', '/');
+            var relativePath = GetRelativePath(repo.LocalDirectory, local.FilePath);
             var pulls = GetPulls(repo, relativePath);
             foreach (var pull in pulls)
             {
@@ -86,8 +86,7 @@ namespace SemDiff.Core
 
             return classBaseNodes.SelectMany(c =>
             {
-                var relativePath = GetRelativePath(repo.LocalDirectory, c.SyntaxTree.FilePath)
-                                            .Replace('\\', '/'); //Standardize Directory Separator!
+                var relativePath = GetRelativePath(repo.LocalDirectory, c.SyntaxTree.FilePath);
 
                 return GetPulls(repo, relativePath).SelectMany(t =>
                 {
@@ -124,6 +123,7 @@ namespace SemDiff.Core
             {
                 return Enumerable.Empty<Pull>();
             }
+            relativePath = relativePath.ToStandardPath();
             return repo.RemoteChangesData
                 .Select(kvp => kvp.Value)
                 .SelectMany(p => p.Files

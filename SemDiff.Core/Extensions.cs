@@ -2,6 +2,7 @@
 using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -106,5 +107,9 @@ namespace SemDiff.Core
         public static Queue<T> ToQueue<T>(this IEnumerable<T> source) => new Queue<T>(source);
 
         public static SyntaxTree ToSyntaxTree(this SyntaxNode node) => SyntaxFactory.SyntaxTree(node);
+
+        public static string ToLocalPath(this string path) => path.Replace('/', Path.DirectorySeparatorChar);
+
+        public static string ToStandardPath(this string path) => path.Replace('\\', '/');
     }
 }
