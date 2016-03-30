@@ -17,23 +17,18 @@ namespace SemDiff.Core
         /// Given a Repo and a Tree find any possible FalsePositives
         /// </summary>
         /// <param name="repo">Repo that has the remote changes that need to be checked</param>
-        /// <param name="tree">The syntax tree that will be compared with syntax trees from repo</param>
-        /// <param name="filePath">The path that the syntax tree was parsed from</param>
-        public static IEnumerable<DetectedFalsePositive> ForFalsePositive(Repo repo, SyntaxTree tree, string filePath) //TODO: Remove filePath, retrieve from SyntaxTree instead
+        /// <param name="local">The syntax tree that will be compared with syntax trees from repo</param>
+        public static IEnumerable<DetectedFalsePositive> ForFalsePositive(Repo repo, SyntaxTree local)
         {
-            var relativePath = GetRelativePath(repo.LocalDirectory, filePath).Replace('\\', '/'); //Standardize Directory Separator!
+            var relativePath = GetRelativePath(repo.LocalDirectory, local.FilePath).Replace('\\', '/');
             var pulls = GetPulls(repo, relativePath);
-            foreach (var fp in pulls)
+            foreach (var pull in pulls)
             {
-                var f = fp.Item1;
-                var p = fp.Item2;
-
-                var conflicts = Diff3.Compare(f.Base, tree, f.File);
+                var conflicts = Diff3.Compare(pull.File.Base, local, pull.File.File);
                 var locs = GetInsertedMethods(conflicts.Local);
                 var rems = GetInsertedMethods(conflicts.Remote);
 
-                var methodConflicts = conflicts.Conflicts //TODO: do we need to convert Conflicts to list first?
-                                 .Where(con => con.Ancestor.Node is MethodDeclarationSyntax);
+                var methodConflicts = conflicts.Conflicts.Where(con => con.Ancestor.Node is MethodDeclarationSyntax);
 
                 foreach (var c in methodConflicts)
                 {
@@ -55,9 +50,9 @@ namespace SemDiff.Core
                     {
                         yield return new DetectedFalsePositive
                         {
-                            Location = Location.Create(tree, conflict.GetLocal().Identifier.Span),
-                            RemoteFile = f,
-                            RemoteChange = p,
+                            Location = Location.Create(local, conflict.GetLocal().Identifier.Span),
+                            RemoteFile = pull.File,
+                            RemoteChange = pull.Change,
                             ConflictType = conflict.LocalLocation == InnerMethodConflict.Local.Changed
                                          ? DetectedFalsePositive.ConflictTypes.LocalMethodChanged
                                          : DetectedFalsePositive.ConflictTypes.LocalMethodRemoved,
@@ -123,19 +118,18 @@ namespace SemDiff.Core
             });
         }
 
-        internal static IEnumerable<Tuple<RemoteFile, RemoteChanges>> GetPulls(Repo repo,
-                                                                            string relativePath)
+        private static IEnumerable<Pull> GetPulls(Repo repo, string relativePath)
         {
             if (relativePath == null || repo == null)
             {
-                return Enumerable.Empty<Tuple<RemoteFile, RemoteChanges>>();
+                return Enumerable.Empty<Pull>();
             }
             return repo.RemoteChangesData
                 .Select(kvp => kvp.Value)
                 .SelectMany(p => p.Files
                                    .Select(f => new { n = f.Filename, f, p }))
                                    .Where(a => a.n == relativePath)
-                                   .Select(a => Tuple.Create(a.f, a.p))
+                                   .Select(a => new Pull(a.f, a.p))
                 .ToList();
         }
 
@@ -191,11 +185,9 @@ namespace SemDiff.Core
 
         private static bool AreSame(SyntaxNode syntax1, SyntaxNode syntax2)
         {
-            if (syntax1 != null && syntax2 != null)
-            {
-                return !syntax1.ToSyntaxTree().GetChanges(syntax2.ToSyntaxTree()).Any();
-            }
-            else return syntax1 == syntax2; //If both are null true, else false
+            return syntax1 == null || syntax2 == null
+                ? syntax1 == syntax2 //Since one is null, reference equality will work
+                : !syntax1.ToSyntaxTree().GetChanges(syntax2.ToSyntaxTree()).Any();
         }
 
         //A move looks like a deleted method and then an added method in
@@ -227,7 +219,18 @@ namespace SemDiff.Core
             }
         }
 
-        //Essentially a named tuple. This inherits is because Tuple gives us useful things like the GetHashCode, Equals, and ToString
+        //Essentially a named tuple with helpers. This inherits is because Tuple gives us useful things like the GetHashCode, Equals, and ToString
+        private class Pull : Tuple<RemoteFile, RemoteChanges>
+        {
+            public Pull(RemoteFile file, RemoteChanges changes) : base(file, changes)
+            {
+            }
+
+            public RemoteFile File => Item1;
+            public RemoteChanges Change => Item2;
+        }
+
+        //Essentially a named tuple with helpers. This inherits is because Tuple gives us useful things like the GetHashCode, Equals, and ToString
         private class InnerMethodConflict : Tuple<MethodDeclarationSyntax, MethodDeclarationSyntax, MethodDeclarationSyntax, Diff3Result, InnerMethodConflict.Local>
         {
             public InnerMethodConflict(MethodDeclarationSyntax ancestor, MethodDeclarationSyntax changed, MethodDeclarationSyntax removed, Diff3Result diffresult, InnerMethodConflict.Local type)
