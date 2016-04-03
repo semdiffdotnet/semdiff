@@ -1,9 +1,12 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SemDiff.Core
@@ -111,5 +114,107 @@ namespace SemDiff.Core
         public static string ToLocalPath(this string path) => path.Replace('/', Path.DirectorySeparatorChar);
 
         public static string ToStandardPath(this string path) => path.Replace('\\', '/');
+
+        public static IEnumerable<T> Cache<T>(this IEnumerable<T> source)
+        {
+            return new CacheIterator<T>(source);
+        }
+
+        private class CacheIterator<T> : IEnumerable<T>
+        {
+            private readonly IEnumerable<T> source;
+            private readonly List<T> cached = new List<T>();
+            private readonly IEnumerator<T> enumerator;
+            private bool isCached;
+
+            public CacheIterator(IEnumerable<T> source)
+            {
+                this.source = source;
+                enumerator = source.GetEnumerator();
+            }
+
+            private void MoveNext()
+            {
+                if (isCached)
+                    return;
+                lock (this)
+                {
+                    if (isCached)
+                        return;
+                    if (enumerator.MoveNext())
+                    {
+                        cached.Add(enumerator.Current);
+                    }
+                    else
+                    {
+                        isCached = true;
+                    }
+                }
+            }
+
+#pragma warning disable CC0022 // Should dispose object (Incorrect Code Cracker Warning)
+
+            public IEnumerator<T> GetEnumerator() => isCached ? source.GetEnumerator() : new CacheEnumerator<T>(this);
+
+#pragma warning restore CC0022 // Should dispose object
+
+            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+            private class CacheEnumerator<R> : IEnumerator<R>
+            {
+                private readonly CacheIterator<R> cacheIterator;
+                private int currentIndex = -1;
+
+                public CacheEnumerator(CacheIterator<R> cacheIterator)
+                {
+                    this.cacheIterator = cacheIterator;
+                }
+
+                public R Current
+                {
+                    get
+                    {
+                        try
+                        {
+                            return cacheIterator.cached[currentIndex];
+                        }
+                        catch (IndexOutOfRangeException)
+                        {
+                            throw new InvalidOperationException();
+                        }
+                    }
+                }
+
+                object IEnumerator.Current => Current;
+
+                public void Dispose()
+                {
+                }
+
+                public bool MoveNext()
+                {
+                    currentIndex++;
+
+                    if (currentIndex < cacheIterator.cached.Count)
+                    {
+                        return true;
+                    }
+                    else if (cacheIterator.isCached)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        cacheIterator.MoveNext();
+                        return (currentIndex < cacheIterator.cached.Count);
+                    }
+                }
+
+                public void Reset()
+                {
+                    currentIndex = -1;
+                }
+            }
+        }
     }
 }

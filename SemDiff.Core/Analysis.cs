@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using MoreLinq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -147,7 +148,7 @@ namespace SemDiff.Core
                                    .Select(f => new { n = f.Filename, f, p }))
                                    .Where(a => a.n == relativePath)
                                    .Select(a => new Pull(a.f, a.p))
-                .ToList();
+                .Cache();
         }
 
         internal static string GetRelativePath(string localDirectory, string filePath)
@@ -167,7 +168,7 @@ namespace SemDiff.Core
             }
         }
 
-        private static InnerMethodConflict GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, List<MethodDeclarationSyntax> insertedMethods, InnerMethodConflict.Local type)
+        private static InnerMethodConflict GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, IEnumerable<MethodDeclarationSyntax> insertedMethods, InnerMethodConflict.Local type)
         {
             if (!string.IsNullOrWhiteSpace(removed.Text))
             {
@@ -187,7 +188,7 @@ namespace SemDiff.Core
             return new InnerMethodConflict(ancestor, change, moved, diffRes, type);
         }
 
-        private static MethodDeclarationSyntax GetMovedMethod(List<MethodDeclarationSyntax> insertedMethods, MethodDeclarationSyntax change)
+        private static MethodDeclarationSyntax GetMovedMethod(IEnumerable<MethodDeclarationSyntax> insertedMethods, MethodDeclarationSyntax change)
         {
             //A unique method seems to be defined by its name and its parameter types (including type params)
 
@@ -216,12 +217,12 @@ namespace SemDiff.Core
 
         //A move looks like a deleted method and then an added method in
         // another place, this find the added methods
-        private static List<MethodDeclarationSyntax> GetInsertedMethods(List<Diff> diffs)
+        private static IEnumerable<MethodDeclarationSyntax> GetInsertedMethods(IEnumerable<Diff> diffs)
         {
             return diffs
                      .Where(diff => string.IsNullOrWhiteSpace(diff.Ancestor.Text))
                      .Select(diff => diff.Changed.Node as MethodDeclarationSyntax)
-                     .Where(node => node != null).ToList();
+                     .Where(node => node != null).Cache();
         }
 
         private static IEnumerable<Tuple<ClassDeclarationSyntax, ClassDeclarationSyntax>>

@@ -29,8 +29,8 @@ namespace SemDiff.Core
         /// </returns>
         public static Diff3Result Compare(SyntaxTree ancestor, SyntaxTree local, SyntaxTree remote)
         {
-            var localChanges = Diff.Compare(ancestor, local).ToList();
-            var remoteChanges = Diff.Compare(ancestor, remote).ToList();
+            var localChanges = Diff.Compare(ancestor, local).Cache();
+            var remoteChanges = Diff.Compare(ancestor, remote).Cache();
 
             return new Diff3Result
             {
@@ -46,8 +46,8 @@ namespace SemDiff.Core
         private static IEnumerable<Conflict> GetConflicts(IEnumerable<Diff> local, IEnumerable<Diff> remote,
             SyntaxTree ancestorTree, SyntaxTree localTree, SyntaxTree remoteTree)
         {
-            var localChanges = local.Select(DiffWithOrigin.Local).ToList();
-            var remoteChanges = remote.Select(DiffWithOrigin.Remote).ToList();
+            var localChanges = local.Select(DiffWithOrigin.Local);
+            var remoteChanges = remote.Select(DiffWithOrigin.Remote);
 
             var changes = Extensions.GetMergedQueue(localChanges, remoteChanges,
                                                             d => d.Diff.Ancestor.Span.Start);

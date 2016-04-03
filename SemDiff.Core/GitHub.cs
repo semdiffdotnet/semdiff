@@ -428,7 +428,7 @@ namespace SemDiff.Core
                         .Where(f => f.Status == GitHub.Files.StatusEnum.Modified || f.Status == GitHub.Files.StatusEnum.Changed)
                         .Where(f => f.Filename.Split('.').Last() == "cs")
                         .Select(f => f.ToRemoteFile(repofolder, Number))
-                        .ToList(),
+                        .Cache(),
                 };
             }
         }
