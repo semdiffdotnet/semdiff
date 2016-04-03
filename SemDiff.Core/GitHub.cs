@@ -81,8 +81,8 @@ namespace SemDiff.Core
                             break;
 
                         case Files.StatusEnum.Changed:
-                            Logger.Info($"The mythical 'changed' status has occured! {pr.Number}:{current.Filename}");
-                            goto case Files.StatusEnum.Modified; //Effectivly falls through to the following
+                            Logger.Info($"The mythical 'changed' status has occurred! {pr.Number}:{current.Filename}");
+                            goto case Files.StatusEnum.Modified; //Effectively falls through to the following
 
                         case Files.StatusEnum.Modified:
                             var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
@@ -95,6 +95,24 @@ namespace SemDiff.Core
             pr.LastWrite = DateTime.UtcNow;
         }
 
+        internal async Task<IList<T>> GetPaginatedList<T>(string url, Ref<string> etag = null)
+        {
+            var pagination = Ref.Create<string>(null);
+            var first = await HttpGetAsync<IList<T>>(url, etag, pagination);
+            if (first == null) //Etag
+            {
+                return null;
+            }
+
+            var list = new List<T>(first);
+            while (pagination.Value != null)
+            {
+                var next = await HttpGetAsync<IList<T>>(pagination.Value, pages: pagination);
+                list.AddRange(next);
+            }
+            return list;
+        }
+
         /// <summary>
         /// Gets each page of the pull request list from GitHub. Once the list is complete, get all
         /// the pull request files for each pull request.
@@ -104,22 +122,8 @@ namespace SemDiff.Core
         {
             var url = $"/repos/{RepoOwner}/{RepoName}/pulls";
             var etag = Ref.Create(EtagNoChanges);
-            var pagination = Ref.Create<string>(null);
-            var paginationPRs = await HttpGetAsync<IList<PullRequest>>(url, etag, pagination);
+            var pullRequests = await GetPaginatedList<PullRequest>(url, etag);
             EtagNoChanges = etag.Value;
-            var pullRequests = paginationPRs;
-            while (paginationPRs != null)
-            {
-                paginationPRs = null;
-                if (pagination.Value != null)
-                {
-                    paginationPRs = await HttpGetAsync<IList<PullRequest>>(pagination.Value, pages: pagination);
-                    foreach (var cur in paginationPRs)
-                    {
-                        pullRequests.Add(cur);
-                    }
-                }
-            }
             if (pullRequests == null)
             {
                 return null;
@@ -141,23 +145,14 @@ namespace SemDiff.Core
                 }
                 DeletePRsFromDisk(removePRs);
             }
-            CurrentSaved = pullRequests;
-            return await Task.WhenAll(pullRequests.Select(async pr =>
+            pullRequests = await Task.WhenAll(pullRequests.Select(async pr =>
             {
-                var filePagination = Ref.Create<string>(null);
-                var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files", pages: filePagination);
-                pr.Files = files;
-                files = null;
-                while (filePagination.Value != null)
-                {
-                    files = await HttpGetAsync<IList<Files>>(filePagination.Value, pages: filePagination);
-                    foreach (var cur in files)
-                    {
-                        pr.Files.Add(cur);
-                    }
-                }
+                pr.Files = await GetPaginatedList<Files>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
                 return pr;
             }));
+            CurrentSaved = pullRequests;
+            UpdateLocalSavedList();
+            return pullRequests;
         }
 
         /// <summary>
