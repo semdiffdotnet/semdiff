@@ -154,7 +154,7 @@ namespace SemDiff.Core
 
 #pragma warning disable CC0022 // Should dispose object (Incorrect Code Cracker Warning)
 
-            public IEnumerator<T> GetEnumerator() => isCached ? source.GetEnumerator() : new CacheEnumerator<T>(this);
+            public IEnumerator<T> GetEnumerator() => isCached ? (IEnumerator<T>)cached.GetEnumerator() : new CacheEnumerator<T>(this);
 
 #pragma warning restore CC0022 // Should dispose object
 
