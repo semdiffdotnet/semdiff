@@ -115,6 +115,15 @@ namespace SemDiff.Core
 
         public static string ToStandardPath(this string path) => path.Replace('\\', '/');
 
+        /// <summary>
+        /// By Default when Linq is used the source in enumerated every time the result is used. The
+        /// traditional fix is to use ToList, but this must enumerate the whole enumerable. This function
+        /// is the middle ground. It will enumerate the source once, but it will only enumerate the items
+        /// that are needed
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source"></param>
+        /// <returns></returns>
         public static IEnumerable<T> Cache<T>(this IEnumerable<T> source)
         {
             return new CacheIterator<T>(source);
