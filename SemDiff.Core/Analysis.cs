@@ -70,51 +70,68 @@ namespace SemDiff.Core
         public static IEnumerable<DetectedFalseNegative> ForFalseNegative(Repo repo,
                                                                         SemanticModel semanticModel)
         {
+            //TODO: Check if local file has been edited before proceeding!
+
+            var bases = GetBaseClasses(semanticModel);
+
+            foreach (var bt in bases) //a file may have multiple classes
+            {
+                foreach (var b in bt.Bases) //Partial classes could span multiple files
+                {
+                    var relativePath = GetRelativePath(repo.LocalDirectory, b.SyntaxTree.FilePath);
+                    var pulls = GetPulls(repo, relativePath);
+
+                    foreach (var p in pulls)
+                    {
+                        var diffs = DiffClassVersion(b, p.File);
+
+                        if (diffs.Any())
+                        {
+                            yield return new DetectedFalseNegative
+                            {
+                                Location = Location.Create(bt.Derived.SyntaxTree, bt.Derived.Identifier.Span),
+                                RemoteChange = p.Change,
+                                RemoteFile = p.File,
+                                TypeName = bt.Derived.Identifier.ToString(),
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
+        //Given the base class and a file that contains another version of the file
+        private static IEnumerable<Diff> DiffClassVersion(ClassDeclarationSyntax b, RemoteFile f)
+        {
+            var ancestorDecs = f.Base
+                                   .GetRoot()
+                                   .DescendantNodes()
+                                   .OfType<ClassDeclarationSyntax>();
+
+            var remoteDecs = f.File
+                                    .GetRoot()
+                                    .DescendantNodes()
+                                    .OfType<ClassDeclarationSyntax>();
+
+            var merged = MergeClassDeclarationSyntaxes(ancestorDecs, remoteDecs).FirstOrDefault(t => AreSameClass(t.Item1, b));
+
+            return Diff.Compare(merged.Item1, merged.Item2);
+        }
+
+        private static IEnumerable<BaseClass> GetBaseClasses(SemanticModel semanticModel)
+        {
             var classDeclarations = semanticModel.SyntaxTree
                                         .GetRoot()
                                         .DescendantNodes()
                                         .OfType<ClassDeclarationSyntax>();
 
-            var declaredSymbol = classDeclarations.Select(cds => semanticModel.GetDeclaredSymbol(cds));
-
-            var classBases = declaredSymbol.SelectMany(
-                    t => (t as INamedTypeSymbol)?.BaseType
-                                    ?.DeclaringSyntaxReferences ?? Enumerable.Empty<SyntaxReference>());
-
-            var classBaseNodes = Task.WhenAll(classBases.Select(sr => sr.GetSyntaxAsync()))
-                                                            .Result.OfType<ClassDeclarationSyntax>();
-
-            return classBaseNodes.SelectMany(c =>
+            foreach (var cd in classDeclarations)
             {
-                var relativePath = GetRelativePath(repo.LocalDirectory, c.SyntaxTree.FilePath);
-
-                return GetPulls(repo, relativePath).SelectMany(t =>
-                {
-                    var file = t.Item1;
-                    var remotechanges = t.Item2;
-
-                    var ancestorDecs = file.Base
-                                            .GetRoot()
-                                            .DescendantNodes()
-                                            .OfType<ClassDeclarationSyntax>();
-
-                    var remoteDecs = file.File
-                                            .GetRoot()
-                                            .DescendantNodes()
-                                            .OfType<ClassDeclarationSyntax>();
-
-                    return MergeClassDeclarationSyntaxes(ancestorDecs, remoteDecs)
-                            .Select(ar => Diff3.Compare(ar.Item1, c, ar.Item2))
-                            .Where(dr => dr.Conflicts.Any())
-                            .Select(dr => new DetectedFalseNegative
-                            {
-                                Location = Location.None,
-                                RemoteChange = remotechanges,
-                                RemoteFile = file,
-                                TypeName = c.Identifier.ToString(),
-                            });
-                });
-            });
+                var ds = semanticModel.GetDeclaredSymbol(cd) as INamedTypeSymbol;
+                var srs = ds?.BaseType?.DeclaringSyntaxReferences ?? Enumerable.Empty<SyntaxReference>();
+                var baseNodes = srs.Select(sr => sr.GetSyntax()).OfType<ClassDeclarationSyntax>();
+                yield return new BaseClass(cd, baseNodes);
+            }
         }
 
         private static IEnumerable<Pull> GetPulls(Repo repo, string relativePath)
@@ -190,6 +207,13 @@ namespace SemDiff.Core
                 : !syntax1.ToSyntaxTree().GetChanges(syntax2.ToSyntaxTree()).Any();
         }
 
+        private static bool AreSameClass(ClassDeclarationSyntax class1, ClassDeclarationSyntax class2)
+        {
+            //will likely have problems with Template classes
+            //TODO: add more checks to be sure it is the correct class
+            return class1.Identifier.Text == class2.Identifier.Text;
+        }
+
         //A move looks like a deleted method and then an added method in
         // another place, this find the added methods
         private static List<MethodDeclarationSyntax> GetInsertedMethods(List<Diff> diffs)
@@ -208,9 +232,8 @@ namespace SemDiff.Core
             foreach (var l in left)
             {
                 //Name of class should give a reasonably good idea of if they are the same class
-                //This will ignore any renaming of the class, and will likely have problems with
-                //Template classes
-                var r = right.FirstOrDefault(rc => rc.Identifier.Text == l.Identifier.Text);
+                //This will ignore any renaming of the class
+                var r = right.FirstOrDefault(rc => AreSameClass(rc, l));
                 if (r != null)
                 {
                     right.Remove(r);
@@ -228,6 +251,16 @@ namespace SemDiff.Core
 
             public RemoteFile File => Item1;
             public RemoteChanges Change => Item2;
+        }
+
+        //Essentially a named tuple with helpers. This inherits is because Tuple gives us useful things like the GetHashCode, Equals, and ToString
+        private class BaseClass : Tuple<ClassDeclarationSyntax, IEnumerable<ClassDeclarationSyntax>>
+        {
+            public BaseClass(ClassDeclarationSyntax derived, IEnumerable<ClassDeclarationSyntax> bases) : base(derived, bases)
+            { }
+
+            public ClassDeclarationSyntax Derived => Item1;
+            public IEnumerable<ClassDeclarationSyntax> Bases => Item2;
         }
 
         //Essentially a named tuple with helpers. This inherits is because Tuple gives us useful things like the GetHashCode, Equals, and ToString
