@@ -50,7 +50,7 @@ namespace SemDiff.Core
         public string AuthToken { get; set; }
         public string AuthUsername { get; set; }
         public HttpClient Client { get; private set; }
-        public IList<PullRequest> CurrentSaved { get; set; }
+        public List<PullRequest> CurrentSaved { get; } = new List<PullRequest>();
         public string EtagNoChanges { get; set; }
         public string JsonFileName { get; } = "LocalList.json";
         public string RepoFolder { get; set; }
@@ -130,27 +130,24 @@ namespace SemDiff.Core
             }
             if (CurrentSaved != null)
             {
-                var removePRs = CurrentSaved;
+                var prToRemove = CurrentSaved.Where(old => pullRequests.All(newpr => newpr.Number != old.Number));
                 foreach (var pr in pullRequests)
                 {
-                    foreach (var prRemove in removePRs)
+                    var old = CurrentSaved.FirstOrDefault(o => o.Number == pr.Number);
+                    if (old != null)
                     {
-                        if (pr.Number == prRemove.Number)
-                        {
-                            pr.LastWrite = prRemove.LastWrite;
-                            removePRs.Remove(prRemove);
-                            break;
-                        }
+                        pr.LastWrite = old.LastWrite;
                     }
                 }
-                DeletePRsFromDisk(removePRs);
+                DeletePRsFromDisk(prToRemove);
             }
             pullRequests = await Task.WhenAll(pullRequests.Select(async pr =>
             {
                 pr.Files = await GetPaginatedList<Files>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files");
                 return pr;
             }));
-            CurrentSaved = pullRequests;
+            CurrentSaved.Clear();
+            CurrentSaved.AddRange(pullRequests);
             UpdateLocalSavedList();
             return pullRequests;
         }
@@ -204,7 +201,8 @@ namespace SemDiff.Core
                 var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
                 path = Path.Combine(path, JsonFileName);
                 var json = File.ReadAllText(path);
-                CurrentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
+                CurrentSaved.Clear();
+                CurrentSaved.AddRange(JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json));
             }
             catch (Exception ex)
             {
