@@ -30,6 +30,8 @@ namespace SemDiff.Core
         /// </returns>
         public static Queue<T> GetMergedQueue<T>(this IEnumerable<T> left, IEnumerable<T> right, Func<T, int> selector)
         {
+            if (selector == null)
+                throw new InvalidOperationException();
             var leftQueue = left.ToQueue();
             var rightQueue = right.ToQueue();
             var result = new Queue<T>();
