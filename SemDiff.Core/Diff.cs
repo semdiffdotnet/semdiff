@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -110,6 +111,17 @@ namespace SemDiff.Core
         public override string ToString()
         {
             return $"<<<<<<<{Ancestor.Text}|||||||{Changed.Text}>>>>>>>";
+        }
+
+        public bool IsWhitspaceOrCommentChange()
+        {
+            if (Ancestor.Node.GetType() != Changed.Node.GetType())
+                return false; //Change is significant enough to change what the node is
+            var atrivia_leading = Ancestor.Node.GetLeadingTrivia();
+            var ctrivia_leading = Changed.Node.GetLeadingTrivia();
+            var astart = atrivia_leading.Count == 0 ? Ancestor.Span.Start : atrivia_leading.FullSpan.End;
+            var cstart = ctrivia_leading.Count == 0 ? Changed.Span.Start : atrivia_leading.FullSpan.End;
+            throw new NotImplementedException();
         }
 
         /// <summary>

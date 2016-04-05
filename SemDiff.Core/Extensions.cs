@@ -102,5 +102,61 @@ namespace SemDiff.Core
         /// <param name="source">list of <typeparamref name="T"/></param>
         /// <returns>A queue that contains the source</returns>
         public static Queue<T> ToQueue<T>(this IEnumerable<T> source) => new Queue<T>(source);
+
+        /// <summary>
+        /// Generates a tuple for every matching element in the list. If the size of the lists are
+        /// not the same, then the shorter list is padded with the default value of the type.
+        /// </summary>
+        /// <typeparam name="L">Element type of left list</typeparam>
+        /// <typeparam name="R">Element type of right list</typeparam>
+        /// <param name="sourcel">Left list</param>
+        /// <param name="sourcer">Right list</param>
+        /// <returns>
+        /// List of tuples, item 1 will contain items from the left list and item 2 will contain
+        /// items from the right list
+        /// </returns>
+        public static IEnumerable<Tuple<L, R>> Map<L, R>(this IEnumerable<L> sourcel, IEnumerable<R> sourcer)
+        {
+            var enuml = sourcel.GetEnumerator();
+            var enumr = sourcer.GetEnumerator();
+
+            var availablel = true;
+            var availabler = true;
+
+            do
+            {
+                availablel = availablel ? enuml.MoveNext() : false; //This way MoveNext is not called after it has returned false once
+                availabler = availabler ? enumr.MoveNext() : false;
+
+                if (availablel || availabler)
+                {
+                    yield return Tuple.Create(availablel ? enuml.Current : default(L),
+                                              availabler ? enumr.Current : default(R));
+                }
+            }
+            while (availablel || availabler);
+        }
+
+        /// <summary>
+        /// Makes a struct type nullable
+        /// </summary>
+        /// <typeparam name="T">Type that will become nullable</typeparam>
+        /// <param name="source">object to be surrounded by nullable</param>
+        /// <returns>A nullable type</returns>
+        public static T? MakeNullable<T>(this T source) where T : struct
+        {
+            return source;
+        }
+
+        /// <summary>
+        /// Filters out all comment and whitespace changes, leaving only conflicts that are
+        /// semantically meaningful
+        /// </summary>
+        /// <param name="source">list of conflicts</param>
+        /// <returns>list of semantically meaningful conflicts</returns>
+        public static IEnumerable<Conflict> SemanticChanges(this IEnumerable<Conflict> source)
+        {
+            return source.Where(c => TriviaCompare.IsSemanticChange(c.Local.Node, c.Remote.Node));
+        }
     }
 }

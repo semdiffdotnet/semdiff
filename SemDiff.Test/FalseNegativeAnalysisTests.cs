@@ -47,7 +47,7 @@ namespace SemDiff.Test
             var solution = MSBuildWorkspace.Create().OpenSolutionAsync(Path.GetFullPath(Path.Combine("curly", "Curly-Broccoli", "Curly-Broccoli.sln"))).Result;
             var compilations = Task.WhenAll(solution.Projects.Select(p => p.GetCompilationAsync())).Result;
 
-            //Creat a pair between of the tree and there compilation
+            //Create a pair between of the tree and there compilation
             var trees_compilation = compilations.SelectMany(c => c.SyntaxTrees.Select(t => new { tree = t, comp = c }));
             //Find the tree for our file, and then get a semantic model
             var model = trees_compilation.Where(tc => tc.tree.FilePath.EndsWith(inheritedClass.Replace('/', '\\'))).Select(tc => tc.comp.GetSemanticModel(tc.tree)).Single();

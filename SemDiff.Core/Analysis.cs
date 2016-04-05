@@ -49,7 +49,7 @@ namespace SemDiff.Core
                     {
                         var diff3 = t.Item3;
                         var local = t.Item2; //local removed
-                        if (!diff3.Conflicts.Any()) //TODO: this doesn't filter out adding comments yet
+                        if (!diff3.Conflicts.SemanticChanges().Any())
                         {
                             //Since Inner method actually has no conflicts, we found a false positive
                             yield return new DetectedFalsePositive
@@ -130,7 +130,7 @@ namespace SemDiff.Core
 
                     return MergeClassDeclarationSyntaxes(ancestorDecs, remoteDecs)
                             .Select(ar => Diff3.Compare(ar.Item1, c, ar.Item2))
-                            .Where(dr => dr.Conflicts.Any())
+                            .Where(dr => dr.Conflicts.SemanticChanges().Any())
                             .Select(dr => new DetectedFalseNegative
                             {
                                 Location = Location.None,
@@ -176,7 +176,7 @@ namespace SemDiff.Core
             GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed,
             SpanDetails removed, List<MethodDeclarationSyntax> insertedMethods)
         {
-            if (string.IsNullOrWhiteSpace(removed.Text))
+            if (TriviaCompare.IsSpanInNodeTrivia(removed.Span, removed.Node))
             {
                 var change = changed.Node as MethodDeclarationSyntax;
                 if (change != null)
@@ -200,7 +200,7 @@ namespace SemDiff.Core
         private static List<MethodDeclarationSyntax> GetInsertedMethods(List<Diff> diffs)
         {
             return diffs
-                     .Where(diff => string.IsNullOrWhiteSpace(diff.Ancestor.Text))
+                     .Where(diff => TriviaCompare.IsSpanInNodeTrivia(diff.Ancestor.Span, diff.Ancestor.Node))
                      .Select(diff => diff.Changed.Node as MethodDeclarationSyntax)
                      .Where(node => node != null).ToList();
         }
