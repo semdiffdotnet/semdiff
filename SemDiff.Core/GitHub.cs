@@ -36,7 +36,7 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
 
-            RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff), RepoOwner, RepoName);
+            RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), RepoOwner, RepoName);
 
             if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
             {
