@@ -40,8 +40,14 @@ namespace SemDiff.Core
                     //If the local was not moved, the local could have still been changed
                     if (conflict == null)
                     {
+<<<<<<< HEAD
                         conflict = GetInnerMethodConflicts(ancestor, c.Local, c.Remote, rems, InnerMethodConflict.Local.Changed);
                         if (conflict == null)
+=======
+                        var diff3 = t.Item3;
+                        var local = t.Item2; //local removed
+                        if (!diff3.Conflicts.SemanticChanges().Any())
+>>>>>>> trivia_change
                         {
                             continue;
                         }
@@ -128,11 +134,44 @@ namespace SemDiff.Core
 
             foreach (var cd in classDeclarations)
             {
+<<<<<<< HEAD
                 var ds = semanticModel.GetDeclaredSymbol(cd) as INamedTypeSymbol;
                 var srs = ds?.BaseType?.DeclaringSyntaxReferences ?? Enumerable.Empty<SyntaxReference>();
                 var baseNodes = srs.Select(sr => sr.GetSyntax()).OfType<ClassDeclarationSyntax>();
                 yield return new BaseClass(cd, baseNodes);
             }
+=======
+                var relativePath = GetRelativePath(repo.LocalDirectory, c.SyntaxTree.FilePath)
+                                            .Replace('\\', '/'); //Standardize Directory Separator!
+
+                return GetPulls(repo, relativePath).SelectMany(t =>
+                {
+                    var file = t.Item1;
+                    var remotechanges = t.Item2;
+
+                    var ancestorDecs = file.Base
+                                            .GetRoot()
+                                            .DescendantNodes()
+                                            .OfType<ClassDeclarationSyntax>();
+
+                    var remoteDecs = file.File
+                                            .GetRoot()
+                                            .DescendantNodes()
+                                            .OfType<ClassDeclarationSyntax>();
+
+                    return MergeClassDeclarationSyntaxes(ancestorDecs, remoteDecs)
+                            .Select(ar => Diff3.Compare(ar.Item1, c, ar.Item2))
+                            .Where(dr => dr.Conflicts.SemanticChanges().Any())
+                            .Select(dr => new DetectedFalseNegative
+                            {
+                                Location = Location.None,
+                                RemoteChange = remotechanges,
+                                RemoteFile = file,
+                                TypeName = c.Identifier.ToString(),
+                            });
+                });
+            });
+>>>>>>> trivia_change
         }
 
         private static IEnumerable<Pull> GetPulls(Repo repo, string relativePath)
@@ -170,7 +209,11 @@ namespace SemDiff.Core
 
         private static InnerMethodConflict GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, IEnumerable<MethodDeclarationSyntax> insertedMethods, InnerMethodConflict.Local type)
         {
+<<<<<<< HEAD
             if (!string.IsNullOrWhiteSpace(removed.Text))
+=======
+            if (TriviaCompare.IsSpanInNodeTrivia(removed.Span, removed.Node))
+>>>>>>> trivia_change
             {
                 return null;
             }
@@ -220,7 +263,7 @@ namespace SemDiff.Core
         private static IEnumerable<MethodDeclarationSyntax> GetInsertedMethods(IEnumerable<Diff> diffs)
         {
             return diffs
-                     .Where(diff => string.IsNullOrWhiteSpace(diff.Ancestor.Text))
+                     .Where(diff => TriviaCompare.IsSpanInNodeTrivia(diff.Ancestor.Span, diff.Ancestor.Node))
                      .Select(diff => diff.Changed.Node as MethodDeclarationSyntax)
                      .Where(node => node != null).Cache();
         }
