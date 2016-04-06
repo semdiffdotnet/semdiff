@@ -11,7 +11,7 @@ namespace SemDiff.Test
     {
         public static SyntaxTree Parse(this string content) => CSharpSyntaxTree.ParseText(content);
 
-        public static SyntaxTree ParseFile(this string path) => CSharpSyntaxTree.ParseText(File.ReadAllText(path));
+        public static SyntaxTree ParseFile(this string path, string setPath = null) => CSharpSyntaxTree.ParseText(File.ReadAllText(path), path: setPath == null ? path : setPath);
 
         public static string WrapWithMethod(this string content, bool isAsync = false, string type = "Class1", string method = "Foo", string returntype = "void", string nameSpace = "ConsoleApplication", IEnumerable<string> usings = null)
         {

@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using System.Collections.Generic;
 using System.Linq;
@@ -47,6 +48,12 @@ namespace SemDiff.Core
 
                 yield return d;
             }
+        }
+
+        internal static IEnumerable<Diff> Compare(SyntaxNode ancestor, SyntaxNode changed)
+        {
+            return Compare(SyntaxFactory.SyntaxTree(ancestor),
+                                    SyntaxFactory.SyntaxTree(changed));
         }
 
         /// <summary>

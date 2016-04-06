@@ -173,7 +173,7 @@ namespace SemDiff.Core
         /// </summary>
         public void UpdateLocalSavedList()
         {
-            var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+            var path = RepoFolder.ToLocalPath();
             path = Path.Combine(path, JsonFileName);
             new FileInfo(path).Directory.Create();
             File.WriteAllText(path, JsonConvert.SerializeObject(CurrentSaved));
@@ -189,7 +189,7 @@ namespace SemDiff.Core
         /// <returns></returns>
         internal static string GetPathInCache(string repofolder, int prNum, string path, bool isAncestor = false)
         {
-            var dir = Path.Combine(repofolder, $"{prNum}", path.Replace('/', '\\'));
+            var dir = Path.Combine(repofolder, $"{prNum}", path.ToLocalPath());
 
             if (isAncestor)
             {
@@ -206,7 +206,7 @@ namespace SemDiff.Core
         {
             try
             {
-                var path = RepoFolder.Replace('/', Path.DirectorySeparatorChar);
+                var path = RepoFolder.ToLocalPath();
                 path = Path.Combine(path, JsonFileName);
                 var json = File.ReadAllText(path);
                 CurrentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
@@ -262,7 +262,7 @@ namespace SemDiff.Core
         private async Task DownloadFileAsync(int prNum, string path, string sha, bool isAncestor = false)
         {
             var rawText = await HttpGetAsync($@"https://github.com/{RepoOwner}/{RepoName}/raw/{sha}/{path}");
-            path = path.Replace('/', Path.DirectorySeparatorChar);
+            path = path.ToStandardPath();
             var dir = GetPathInCache(RepoFolder, prNum, path, isAncestor);
             new FileInfo(dir).Directory.Create();
             File.WriteAllText(dir, rawText);
@@ -428,7 +428,7 @@ namespace SemDiff.Core
                         .Where(f => f.Status == GitHub.Files.StatusEnum.Modified || f.Status == GitHub.Files.StatusEnum.Changed)
                         .Where(f => f.Filename.Split('.').Last() == "cs")
                         .Select(f => f.ToRemoteFile(repofolder, Number))
-                        .ToList(),
+                        .Cache(),
                 };
             }
         }

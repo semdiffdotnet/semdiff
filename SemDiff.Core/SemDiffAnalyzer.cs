@@ -99,9 +99,8 @@ namespace SemDiff.Core
         private static IEnumerable<Diagnostic> Analyze(SemanticModel semanticModel, Repo repo)
         {
             Logger.Trace($"Entering {nameof(Analyze)}: {semanticModel?.SyntaxTree?.FilePath}");
-            var filePath = semanticModel.SyntaxTree.FilePath;
 
-            var fps = Analysis.ForFalsePositive(repo, semanticModel.SyntaxTree, filePath);
+            var fps = Analysis.ForFalsePositive(repo, semanticModel.SyntaxTree);
             var fns = Analysis.ForFalseNegative(repo, semanticModel);
 #if DEBUG
             fps = fps.Log(fp => Logger.Info($"{fp}"));
