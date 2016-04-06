@@ -113,17 +113,6 @@ namespace SemDiff.Core
             return $"<<<<<<<{Ancestor.Text}|||||||{Changed.Text}>>>>>>>";
         }
 
-        public bool IsWhitspaceOrCommentChange()
-        {
-            if (Ancestor.Node.GetType() != Changed.Node.GetType())
-                return false; //Change is significant enough to change what the node is
-            var atrivia_leading = Ancestor.Node.GetLeadingTrivia();
-            var ctrivia_leading = Changed.Node.GetLeadingTrivia();
-            var astart = atrivia_leading.Count == 0 ? Ancestor.Span.Start : atrivia_leading.FullSpan.End;
-            var cstart = ctrivia_leading.Count == 0 ? Changed.Span.Start : atrivia_leading.FullSpan.End;
-            throw new NotImplementedException();
-        }
-
         /// <summary>
         /// Determines if a single diff intersects with any number of other diffs
         /// </summary>
