@@ -69,14 +69,14 @@ namespace SemDiff.Core
                     {
                         return new[] { Diagnostics.UnexpectedError($"Communicating with GitHub: '{ex.Message}'") };
                     }
-                    catch (GitHubDeserializationException)
+                    catch (GitHubDeserializationException ex)
                     {
-                        return new[] { Diagnostics.UnexpectedError("Deserializing Data") };
+                        return new[] { Diagnostics.UnexpectedError($"Deserializing Data: '{ex.Message}'") };
                     }
                     catch (Exception ex)
                     {
                         Logger.Error($"Unhandled Exception from {nameof(repo.UpdateRemoteChangesAsync)}: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
-                        return new[] { Diagnostics.UnexpectedError("Communicating with GitHub") };
+                        return new[] { Diagnostics.UnexpectedError($"Communicating with GitHub: '{ex.Message}'") };
                     }
                 }
 
