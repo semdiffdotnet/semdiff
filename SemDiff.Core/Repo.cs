@@ -82,25 +82,34 @@ namespace SemDiff.Core
         /// </summary>
         public async Task UpdateRemoteChangesAsync()
         {
-            var elapsedSinceUpdate = (DateTime.Now - LastUpdate);
-            if (elapsedSinceUpdate > MaxUpdateInterval)
+            lock (this)
             {
-                //TODO: Need a lock around this block so that if this method is called concurrently twice it will only make requests once.
-
-                //Many Changes will be made to the Immutable Dictionary so we will use the builder interface
-                var remChanges = RemoteChangesData.ToBuilder();
-
-                var pulls = await GitHubApi.GetPullRequestsAsync();
-                await Task.WhenAll(pulls.Select(GitHubApi.DownloadFilesAsync));
-                foreach (var p in pulls)
+                var elapsedSinceUpdate = (DateTime.Now - LastUpdate);
+                if (elapsedSinceUpdate <= MaxUpdateInterval)
                 {
-                    remChanges[p.Number] = p.ToRemoteChanges(GitHubApi.RepoFolder);
+                    return;
                 }
-
-                //Update our RemoteChangesData reference to new data
-                RemoteChangesData = remChanges.ToImmutable();
                 LastUpdate = DateTime.Now;
             }
+
+            var pulls = await GitHubApi.GetPullRequestsAsync();
+            if (pulls == null)
+            {
+                return;
+            }
+
+            await Task.WhenAll(pulls.Select(GitHubApi.DownloadFilesAsync));
+
+            //Many Changes will be made to the Immutable Dictionary so we will use the builder interface
+            var remChanges = RemoteChangesData.ToBuilder();
+
+            foreach (var p in pulls)
+            {
+                remChanges[p.Number] = p.ToRemoteChanges(GitHubApi.RepoFolder);
+            }
+
+            //Update our RemoteChangesData reference to new data
+            RemoteChangesData = remChanges.ToImmutable();
         }
 
         internal static Repo AddRepo(string directoryPath)

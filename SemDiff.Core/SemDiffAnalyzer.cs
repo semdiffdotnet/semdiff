@@ -69,14 +69,14 @@ namespace SemDiff.Core
                     {
                         return new[] { Diagnostics.UnexpectedError($"Communicating with GitHub: '{ex.Message}'") };
                     }
-                    catch (GitHubDeserializationException)
+                    catch (GitHubDeserializationException ex)
                     {
-                        return new[] { Diagnostics.UnexpectedError("Deserializing Data") };
+                        return new[] { Diagnostics.UnexpectedError($"Deserializing Data: '{ex.Message}'") };
                     }
                     catch (Exception ex)
                     {
                         Logger.Error($"Unhandled Exception from {nameof(repo.UpdateRemoteChangesAsync)}: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
-                        return new[] { Diagnostics.UnexpectedError("Communicating with GitHub") };
+                        return new[] { Diagnostics.UnexpectedError($"Communicating with GitHub: '{ex.Message}'") };
                     }
                 }
 
@@ -99,9 +99,8 @@ namespace SemDiff.Core
         private static IEnumerable<Diagnostic> Analyze(SemanticModel semanticModel, Repo repo)
         {
             Logger.Trace($"Entering {nameof(Analyze)}: {semanticModel?.SyntaxTree?.FilePath}");
-            var filePath = semanticModel.SyntaxTree.FilePath;
 
-            var fps = Analysis.ForFalsePositive(repo, semanticModel.SyntaxTree, filePath);
+            var fps = Analysis.ForFalsePositive(repo, semanticModel.SyntaxTree);
             var fns = Analysis.ForFalseNegative(repo, semanticModel);
 #if DEBUG
             fps = fps.Log(fp => Logger.Info($"{fp}"));

@@ -14,15 +14,18 @@ namespace SemDiff.Core
     {
         //At the highest level we have a dictionary that maps the assembly
         //name to info about the repository and it's files
+#pragma warning disable CC0052 // Make field readonly
+
         private ImmutableDictionary<string, RepoFileSyntaxTreeInfo> store =
                 ImmutableDictionary<string, RepoFileSyntaxTreeInfo>.Empty;
+
+#pragma warning restore CC0052 // Make field readonly
 
         public ImmutableDictionary<string, RepoFileSyntaxTreeInfo> Store => store;
 
         public RepoFileSyntaxTreeInfo InterlockedAddOrUpdate(string assembly,
             IEnumerable<SyntaxTree> trees, Func<SyntaxTree, Repo> getRepoFunc)
         {
-            trees = trees.ToList(); //Possibly remove
             return ImmutableInterlocked.AddOrUpdate(ref store,
                         assembly, s => InUpdate(trees, getRepoFunc),
                         (s, r) => InUpdate(trees, getRepoFunc, r));
