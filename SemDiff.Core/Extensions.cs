@@ -1,6 +1,6 @@
-using Newtonsoft.Json;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -232,8 +232,9 @@ namespace SemDiff.Core
                     currentIndex = -1;
                 }
             }
-        
-	/// <summary>
+        }
+
+        /// <summary>
         /// Generates a tuple for every matching element in the list. If the size of the lists are
         /// not the same, then the shorter list is padded with the default value of the type.
         /// </summary>
@@ -276,17 +277,6 @@ namespace SemDiff.Core
         public static T? MakeNullable<T>(this T source) where T : struct
         {
             return source;
-        }
-
-        /// <summary>
-        /// Filters out all comment and whitespace changes, leaving only conflicts that are
-        /// semantically meaningful
-        /// </summary>
-        /// <param name="source">list of conflicts</param>
-        /// <returns>list of semantically meaningful conflicts</returns>
-        public static IEnumerable<Conflict> SemanticChanges(this IEnumerable<Conflict> source)
-        {
-            return source.Where(c => TriviaCompare.IsSemanticChange(c.Local.Node, c.Remote.Node));
         }
     }
 }
