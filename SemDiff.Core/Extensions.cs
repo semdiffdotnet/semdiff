@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+using Newtonsoft.Json;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using System;
 using System.Collections;
@@ -16,6 +17,11 @@ namespace SemDiff.Core
     /// </summary>
     public static class Extensions
     {
+        public static T Clone<T>(this T source)
+        {
+            return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(source));
+        }
+
         /// <summary>
         /// Merges two IEnumerable into a queue in an order based on an integer value
         /// </summary>

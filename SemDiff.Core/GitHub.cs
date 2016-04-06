@@ -247,7 +247,7 @@ namespace SemDiff.Core
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"{ex.GetType().Name}: Couldn't load {JsonFileName} because {ex.Message}");
+                    Logger.Error($"{ex.GetType().Name}: Couldn't delete {dir} because {ex.Message}");
                 }
             }
         }

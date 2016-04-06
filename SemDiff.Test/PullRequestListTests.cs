@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SemDiff.Test
 {
@@ -184,37 +185,19 @@ namespace SemDiff.Test
         [TestMethod]
         public void RemoveUnusedLocalFiles()
         {
-            var path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
-            path = Path.Combine(path, "0");
-            Directory.CreateDirectory(path);
             var requests = github.GetPullRequestsAsync().Result;
-            var prZero = new GitHub.PullRequest
-            {
-                Number = 0,
-                State = requests.First().State,
-                Title = requests.First().Title,
-                Locked = requests.First().Locked,
-                Updated = requests.First().Updated,
-                LastWrite = requests.First().LastWrite,
-                Url = requests.First().Url,
-                User = requests.First().User,
-                Head = requests.First().Head,
-                Base = requests.First().Base,
-                Files = requests.First().Files
-            };
-            var currentSaved = github.CurrentSaved;
-            currentSaved.Add(prZero);
-            github.CurrentSaved.Clear();
-            github.CurrentSaved.AddRange(currentSaved);
-            path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
-            path = Path.Combine(path, github.JsonFileName);
-            new FileInfo(path).Directory.Create();
-            File.WriteAllText(path, JsonConvert.SerializeObject(currentSaved));
+            var zeroDir = Path.Combine(github.RepoFolder.Replace('/', Path.DirectorySeparatorChar), "0");
+            Directory.CreateDirectory(zeroDir);
+            var prZero = requests.First().Clone();
+            prZero.Number = 0;
+            github.CurrentSaved.Add(prZero);
+            var json = Path.Combine(github.RepoFolder.Replace('/', Path.DirectorySeparatorChar), github.JsonFileName);
+            File.WriteAllText(json, JsonConvert.SerializeObject(github.CurrentSaved));
             github.GetCurrentSaved();
+            github.EtagNoChanges = null;
             requests = github.GetPullRequestsAsync().Result;
-            path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
-            path = Path.Combine(path, "0");
-            Assert.IsFalse(Directory.Exists(path));
+            //Task.Delay(1000).Wait(); //http://stackoverflow.com/a/25421332/2899390
+            Assert.IsFalse(Directory.Exists(zeroDir));
         }
 
         [TestMethod]
