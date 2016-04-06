@@ -142,7 +142,7 @@ namespace SemDiff.Core
                 DeletePRsFromDisk(removePRs);
             }
             CurrentSaved = pullRequests;
-            return await Task.WhenAll(pullRequests.Select(async pr =>
+            var returnValue = await Task.WhenAll(pullRequests.Select(async pr =>
             {
                 var filePagination = Ref.Create<string>(null);
                 var files = await HttpGetAsync<IList<Files>>($"/repos/{RepoOwner}/{RepoName}/pulls/{pr.Number}/files", pages: filePagination);
@@ -158,6 +158,8 @@ namespace SemDiff.Core
                 }
                 return pr;
             }));
+            UpdateLocalSavedList();
+            return returnValue;
         }
 
         /// <summary>
