@@ -204,7 +204,8 @@ namespace SemDiff.Test
             };
             var currentSaved = github.CurrentSaved;
             currentSaved.Add(prZero);
-            github.CurrentSaved = currentSaved;
+            github.CurrentSaved.Clear();
+            github.CurrentSaved.AddRange(currentSaved);
             path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
             path = Path.Combine(path, github.JsonFileName);
             new FileInfo(path).Directory.Create();
