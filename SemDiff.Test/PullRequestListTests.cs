@@ -19,6 +19,7 @@ namespace SemDiff.Test
         [TestInitialize]
         public void TestInit()
         {
+
             github = new Repo(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
             github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
@@ -205,7 +206,7 @@ namespace SemDiff.Test
         {
             var requests = github.GetPullRequestsAsync().Result;
             github.UpdateLocalSavedList();
-            var newgithub = new Repo(owner, repository);
+            var newgithub = new Repo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff)), owner, repository);
             Assert.IsNotNull(newgithub.CurrentSaved);
         }
 

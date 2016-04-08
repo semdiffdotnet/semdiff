@@ -32,11 +32,12 @@ namespace SemDiff.Core
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         private static readonly Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
         public static TimeSpan MaxUpdateInterval { get; set; } = TimeSpan.FromMinutes(5);
-        public Repo(string repoOwner, string repoName, string authUsername = null, string authToken = null)
+        public Repo(string directory, string repoOwner, string repoName, string authUsername = null, string authToken = null)
         {
             Logger.Info($"{nameof(Repo)}: {authUsername}:{authToken} for {repoOwner}\\{repoName}");
             Owner = repoOwner;
             RepoName = repoName;
+            LocalDirectory = directory;
             EtagNoChanges = null;
             Client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate })
             {
@@ -44,7 +45,6 @@ namespace SemDiff.Core
             };
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-
             RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName);
 
             if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
@@ -199,7 +199,7 @@ namespace SemDiff.Core
                 name = name.Substring(0, name.Length - 4);
             }
             Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
-            return new Repo(owner, name);
+            return new Repo(repoDir, owner, name);
         }
 
     internal async Task<IList<T>> GetPaginatedList<T>(string url, Ref<string> etag = null)
