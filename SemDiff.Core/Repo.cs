@@ -194,13 +194,12 @@ namespace SemDiff.Core
             var url = match.Value.Trim();
             var owner = match.Groups[3].Value.Trim();
             var name = match.Groups[4].Value.Trim();
-
             if (name.EndsWith(".git"))
             {
                 name = name.Substring(0, name.Length - 4);
             }
             Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
-            return new Repo(repoDir, owner, name);
+            return new Repo(owner, name);
         }
 
     internal async Task<IList<T>> GetPaginatedList<T>(string url, Ref<string> etag = null)

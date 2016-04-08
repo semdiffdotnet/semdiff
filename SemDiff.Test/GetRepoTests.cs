@@ -47,7 +47,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void GetRepoThatDoesntExistTest()
         {
-            var inAppData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Local", "Microsoft");
+            var inAppData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Local", "Microsoft");
             var repo = Repo.GetRepoFor(inAppData);
             Assert.AreEqual(null, repo);
         }
