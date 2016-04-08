@@ -19,8 +19,10 @@ namespace SemDiff.Test
         [TestInitialize]
         public void TestInit()
         {
-
-            github = new Repo(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
+            var authUsername = "haroldhues";
+            var authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
+            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+            github = new Repo(repoLoc,owner, repository, authUsername, authToken);
             github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
             if (new FileInfo(appDataFolder).Exists)
