@@ -32,10 +32,10 @@ namespace SemDiff.Test
             //These files are in the cloned directory!
 
             //'Remote' False Negative B (Optimize Logger by not calling Log) #4
-            remoteBase = GitHub.GetPathInCache(CurlyBroccoli.GitHubApi.RepoFolder, 4, baseClass).ParseFile();
+            remoteBase = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 4, baseClass).ParseFile();
 
             //Ancestor
-            ancestorBase = GitHub.GetPathInCache(CurlyBroccoli.GitHubApi.RepoFolder, 3, baseClass, isAncestor: true).ParseFile();
+            ancestorBase = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 3, baseClass, isAncestor: true).ParseFile();
         }
 
         [TestMethod]

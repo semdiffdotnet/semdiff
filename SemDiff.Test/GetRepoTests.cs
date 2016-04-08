@@ -14,7 +14,7 @@ namespace SemDiff.Test
         {
             var repo = Repo.RepoFromConfig(".", "testgitconfig.txt");
             Assert.AreEqual("dotnet", repo.Owner);
-            Assert.AreEqual("roslyn", repo.Name);
+            Assert.AreEqual("roslyn", repo.RepoName);
         }
 
         [TestMethod]
@@ -22,7 +22,7 @@ namespace SemDiff.Test
         {
             var repo = Repo.RepoFromConfig(".", "testgitconfig2.txt");
             Assert.AreEqual("haroldhues", repo.Owner);
-            Assert.AreEqual("HaroldHues-Public", repo.Name);
+            Assert.AreEqual("HaroldHues-Public", repo.RepoName);
         }
 
         [TestMethod]
@@ -30,7 +30,7 @@ namespace SemDiff.Test
         {
             var repo = Repo.RepoFromConfig(".", "testgitconfig3.txt");
             Assert.AreEqual("dotnet", repo.Owner);
-            Assert.AreEqual("roslyn", repo.Name);
+            Assert.AreEqual("roslyn", repo.RepoName);
         }
 
         [TestMethod]
@@ -39,7 +39,7 @@ namespace SemDiff.Test
             var thisFile = GetFileName();
             var repo = Repo.GetRepoFor(thisFile);
             Assert.AreEqual("semdiffdotnet", repo.Owner);
-            Assert.AreEqual("semdiff", repo.Name);
+            Assert.AreEqual("semdiff", repo.RepoName);
         }
 
         private string GetFileName([CallerFilePath] string file = "") => file;

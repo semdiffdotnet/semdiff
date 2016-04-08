@@ -12,12 +12,12 @@
         private string owner = "semdiffdotnet";
         private string repository = "curly-broccoli";
 
-        private IList<GitHub.PullRequest> pullRequests;
-        private GitHub github;
+        private IList<Repo.PullRequest> pullRequests;
+        private Repo github;
 
         public GitHubAuthTest()
         {
-            github = new GitHub(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
+            github = new Repo(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
         }
 
         [TestMethod]

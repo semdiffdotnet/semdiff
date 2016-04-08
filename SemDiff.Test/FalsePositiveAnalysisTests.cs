@@ -22,11 +22,11 @@ namespace SemDiff.Test
 
             var path = Path.GetFullPath(Path.Combine("curly", relativePath));
             //False Positive A (Function12 moved, but not changed)
-            fpA = GitHub.GetPathInCache(CurlyBroccoli.GitHubApi.RepoFolder, 1, relativePath).ParseFile(setPath: path);
+            fpA = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 1, relativePath).ParseFile(setPath: path);
             //False Positive B (Function12 changed)
-            fpB = GitHub.GetPathInCache(CurlyBroccoli.GitHubApi.RepoFolder, 2, relativePath).ParseFile(setPath: path);
+            fpB = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 2, relativePath).ParseFile(setPath: path);
             //Ancestor (shared by both)
-            fpC = GitHub.GetPathInCache(CurlyBroccoli.GitHubApi.RepoFolder, 2, relativePath, isAncestor: true).ParseFile(setPath: path);
+            fpC = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 2, relativePath, isAncestor: true).ParseFile(setPath: path);
         }
 
         [TestMethod]

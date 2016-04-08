@@ -14,12 +14,12 @@ namespace SemDiff.Test
     {
         private const string owner = "semdiffdotnet";
         private const string repository = "curly-broccoli";
-        public static GitHub github;
+        public static Repo github;
 
         [TestInitialize]
         public void TestInit()
         {
-            github = new GitHub(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
+            github = new Repo(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
             github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
             if (new FileInfo(appDataFolder).Exists)
@@ -30,7 +30,7 @@ namespace SemDiff.Test
         public void NewGitHub()
         {
             Assert.AreEqual(github.RepoName, repository);
-            Assert.AreEqual(github.RepoOwner, owner);
+            Assert.AreEqual(github.Owner, owner);
         }
 
         [TestMethod]
@@ -80,7 +80,7 @@ namespace SemDiff.Test
             {
                 Assert.Inconclusive("Thou hast ran out of requests");
             }
-            github.RepoOwner = "dotnet";
+            github.Owner = "dotnet";
             github.RepoName = "roslyn";
             var roslynPRs = github.GetPullRequestsAsync().Result;
             Assert.IsTrue(roslynPRs.Count > 30);
@@ -165,7 +165,7 @@ namespace SemDiff.Test
             github.UpdateLocalSavedList();
             Assert.IsTrue(File.Exists(path));
             var json = File.ReadAllText(path);
-            var currentSaved = JsonConvert.DeserializeObject<IList<GitHub.PullRequest>>(json);
+            var currentSaved = JsonConvert.DeserializeObject<IList<Repo.PullRequest>>(json);
             Assert.AreEqual(github.CurrentSaved.Count, currentSaved.Count);
             var local = currentSaved.First();
             var gPR = github.CurrentSaved.First();
@@ -205,7 +205,7 @@ namespace SemDiff.Test
         {
             var requests = github.GetPullRequestsAsync().Result;
             github.UpdateLocalSavedList();
-            var newgithub = new GitHub(owner, repository);
+            var newgithub = new Repo(owner, repository);
             Assert.IsNotNull(newgithub.CurrentSaved);
         }
 
