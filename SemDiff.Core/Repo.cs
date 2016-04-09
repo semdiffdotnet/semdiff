@@ -1,9 +1,13 @@
 ﻿using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using SemDiff.Core.Configuration;
 using SemDiff.Core.Exceptions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Configuration;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -12,10 +16,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using SemDiff.Core.Configuration;
-using System.Collections.Concurrent;
-using System.Configuration;
-using System.Collections.Immutable;
 
 namespace SemDiff.Core
 {
@@ -27,10 +27,11 @@ namespace SemDiff.Core
     {
         internal static readonly GitHubConfiguration gitHubConfig =
             new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("SemDiff.Core/authentication"));
+
         private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)");
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         private static readonly Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
-        public static TimeSpan MaxUpdateInterval { get; set; } = TimeSpan.FromMinutes(5);
+
         public Repo(string directory, string repoOwner, string repoName, string authUsername = null, string authToken = null)
         {
             Logger.Info($"{nameof(Repo)}: {authUsername}:{authToken} for {repoOwner}\\{repoName}");
@@ -55,55 +56,21 @@ namespace SemDiff.Core
             GetCurrentSaved();
         }
 
+        public static TimeSpan MaxUpdateInterval { get; set; } = TimeSpan.FromMinutes(5);
         public string AuthToken { get; set; }
         public string AuthUsername { get; set; }
         public HttpClient Client { get; private set; }
         public List<PullRequest> CurrentSaved { get; } = new List<PullRequest>();
         public string EtagNoChanges { get; set; }
         public string JsonFileName { get; } = "LocalList.json";
+        public DateTime LastUpdate { get; internal set; } = DateTime.MinValue;
+        public string LocalDirectory { get; }
+        public string Owner { get; set; }
         public string RepoFolder { get; set; }
         public string RepoName { get; set; }
-        public string Owner { get; set; }
         public int RequestsLimit { get; private set; }
         public int RequestsRemaining { get; private set; }
         internal ImmutableDictionary<int, RemoteChanges> RemoteChangesData { get; set; } = ImmutableDictionary<int, RemoteChanges>.Empty;
-        public DateTime LastUpdate { get; internal set; } = DateTime.MinValue;
-        public string LocalDirectory { get; }
-
-        /// <summary>
-        /// Gets Pull Requests and the master branch if it has been modified, this method also insures that we don't update more than MaxUpdateInterval
-        /// </summary>
-        public async Task UpdateRemoteChangesAsync()
-        {
-            lock (this)
-            {
-                var elapsedSinceUpdate = (DateTime.Now - LastUpdate);
-                if (elapsedSinceUpdate <= MaxUpdateInterval)
-                {
-                    return;
-                }
-                LastUpdate = DateTime.Now;
-            }
-
-            var pulls = await GetPullRequestsAsync();
-            if (pulls == null)
-            {
-                return;
-            }
-
-            await Task.WhenAll(pulls.Select(DownloadFilesAsync));
-
-            //Many Changes will be made to the Immutable Dictionary so we will use the builder interface
-            var remChanges = RemoteChangesData.ToBuilder();
-
-            foreach (var p in pulls)
-            {
-                remChanges[p.Number] = p.ToRemoteChanges(RepoFolder);
-            }
-
-            //Update our RemoteChangesData reference to new data
-            RemoteChangesData = remChanges.ToImmutable();
-        }
 
         /// <summary>
         /// Looks for the git repo above the current file in the directory hierarchy. Null will be returned if no repo was found.
@@ -150,73 +117,24 @@ namespace SemDiff.Core
             }
             pr.LastWrite = DateTime.UtcNow;
         }
-        internal static Repo AddRepo(string directoryPath)
-        {
-            Logger.Debug($"Dir: {directoryPath}");
-            var gitconfig = Path.Combine(directoryPath, ".git", "config");
-            if (File.Exists(gitconfig))
-            {
-                Logger.Info($".gitconfig File Found: {gitconfig}");
-                return RepoFromConfig(directoryPath, gitconfig);
-            }
-            else
-            {
-                //Go up a directory and check it out
-                var parentDirectory = Path.GetDirectoryName(directoryPath);
-                if (parentDirectory == null)
-                {
-                    //This file is not in a git repo! (GetDirectoryName returns null when given the root directory)
-                    return null; //This is much more common than you might think, because often random files are compiled, this will allow us to exclude them
-                }
-                return _repoLookup.GetOrAdd(parentDirectory, AddRepo);
-            }
-        }
 
         /// <summary>
-        /// Flushes the internal mappings of directories to repos
+        /// Reads the pull requests from the persistent file
         /// </summary>
-        internal static void ClearLookup()
+        public void GetCurrentSaved()
         {
-            _repoLookup.Clear();
-        }
-
-        internal static Repo RepoFromConfig(string repoDir, string gitconfigPath)
-        {
-            var config = File.ReadAllText(gitconfigPath);
-            var match = _gitHubUrl.Match(config);
-            if (!match.Success)
+            try
             {
-                Logger.Error(nameof(GitHubUrlNotFoundException));
-                throw new GitHubUrlNotFoundException(path: repoDir);
+                var path = RepoFolder.ToLocalPath();
+                path = Path.Combine(path, JsonFileName);
+                var json = File.ReadAllText(path);
+                CurrentSaved.Clear();
+                CurrentSaved.AddRange(JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json));
             }
-
-            var url = match.Value.Trim();
-            var owner = match.Groups[3].Value.Trim();
-            var name = match.Groups[4].Value.Trim();
-            if (name.EndsWith(".git"))
+            catch (Exception ex)
             {
-                name = name.Substring(0, name.Length - 4);
+                Logger.Error($"{ex.GetType().Name}: Couldn't load {JsonFileName} because {ex.Message}");
             }
-            Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
-            return new Repo(repoDir, owner, name);
-        }
-
-    internal async Task<IList<T>> GetPaginatedList<T>(string url, Ref<string> etag = null)
-        {
-            var pagination = Ref.Create<string>(null);
-            var first = await HttpGetAsync<IList<T>>(url, etag, pagination);
-            if (first == null) //Etag
-            {
-                return null;
-            }
-
-            var list = new List<T>(first);
-            while (pagination.Value != null)
-            {
-                var next = await HttpGetAsync<IList<T>>(pagination.Value, pages: pagination);
-                list.AddRange(next);
-            }
-            return list;
         }
 
         /// <summary>
@@ -278,6 +196,71 @@ namespace SemDiff.Core
         }
 
         /// <summary>
+        /// Gets Pull Requests and the master branch if it has been modified, this method also insures that we don't update more than MaxUpdateInterval
+        /// </summary>
+        public async Task UpdateRemoteChangesAsync()
+        {
+            lock (this)
+            {
+                var elapsedSinceUpdate = (DateTime.Now - LastUpdate);
+                if (elapsedSinceUpdate <= MaxUpdateInterval)
+                {
+                    return;
+                }
+                LastUpdate = DateTime.Now;
+            }
+
+            var pulls = await GetPullRequestsAsync();
+            if (pulls == null)
+            {
+                return;
+            }
+
+            await Task.WhenAll(pulls.Select(DownloadFilesAsync));
+
+            //Many Changes will be made to the Immutable Dictionary so we will use the builder interface
+            var remChanges = RemoteChangesData.ToBuilder();
+
+            foreach (var p in pulls)
+            {
+                remChanges[p.Number] = p.ToRemoteChanges(RepoFolder);
+            }
+
+            //Update our RemoteChangesData reference to new data
+            RemoteChangesData = remChanges.ToImmutable();
+        }
+
+        internal static Repo AddRepo(string directoryPath)
+        {
+            Logger.Debug($"Dir: {directoryPath}");
+            var gitconfig = Path.Combine(directoryPath, ".git", "config");
+            if (File.Exists(gitconfig))
+            {
+                Logger.Info($".gitconfig File Found: {gitconfig}");
+                return RepoFromConfig(directoryPath, gitconfig);
+            }
+            else
+            {
+                //Go up a directory and check it out
+                var parentDirectory = Path.GetDirectoryName(directoryPath);
+                if (parentDirectory == null)
+                {
+                    //This file is not in a git repo! (GetDirectoryName returns null when given the root directory)
+                    return null; //This is much more common than you might think, because often random files are compiled, this will allow us to exclude them
+                }
+                return _repoLookup.GetOrAdd(parentDirectory, AddRepo);
+            }
+        }
+
+        /// <summary>
+        /// Flushes the internal mappings of directories to repos
+        /// </summary>
+        internal static void ClearLookup()
+        {
+            _repoLookup.Clear();
+        }
+
+        /// <summary>
         /// Construct the absolute path of a file in a pull request
         /// </summary>
         /// <param name="repofolder">the path to the repo in the AppData folder</param>
@@ -297,23 +280,43 @@ namespace SemDiff.Core
             return dir;
         }
 
-        /// <summary>
-        /// Reads the pull requests from the persistent file
-        /// </summary>
-        public void GetCurrentSaved()
+        internal static Repo RepoFromConfig(string repoDir, string gitconfigPath)
         {
-            try
+            var config = File.ReadAllText(gitconfigPath);
+            var match = _gitHubUrl.Match(config);
+            if (!match.Success)
             {
-                var path = RepoFolder.ToLocalPath();
-                path = Path.Combine(path, JsonFileName);
-                var json = File.ReadAllText(path);
-                CurrentSaved.Clear();
-                CurrentSaved.AddRange(JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json));
+                Logger.Error(nameof(GitHubUrlNotFoundException));
+                throw new GitHubUrlNotFoundException(path: repoDir);
             }
-            catch (Exception ex)
+
+            var url = match.Value.Trim();
+            var owner = match.Groups[3].Value.Trim();
+            var name = match.Groups[4].Value.Trim();
+            if (name.EndsWith(".git"))
             {
-                Logger.Error($"{ex.GetType().Name}: Couldn't load {JsonFileName} because {ex.Message}");
+                name = name.Substring(0, name.Length - 4);
             }
+            Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
+            return new Repo(repoDir, owner, name);
+        }
+
+        internal async Task<IList<T>> GetPaginatedList<T>(string url, Ref<string> etag = null)
+        {
+            var pagination = Ref.Create<string>(null);
+            var first = await HttpGetAsync<IList<T>>(url, etag, pagination);
+            if (first == null) //Etag
+            {
+                return null;
+            }
+
+            var list = new List<T>(first);
+            while (pagination.Value != null)
+            {
+                var next = await HttpGetAsync<IList<T>>(pagination.Value, pages: pagination);
+                list.AddRange(next);
+            }
+            return list;
         }
 
         private static T DeserializeWithErrorHandling<T>(string content)
