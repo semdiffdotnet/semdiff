@@ -151,11 +151,10 @@
     <Compile Include="Diff3.cs" />
     <Compile Include="DiffWithOrigin.cs" />
     <Compile Include="Extensions.cs" />
-    <Compile Include="GitHub.cs" />
+    <Compile Include="Repo.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RemoteChanges.cs" />
-    <Compile Include="Repo.cs" />
     <Compile Include="TriviaCompare.cs" />
   </ItemGroup>
   <ItemGroup>

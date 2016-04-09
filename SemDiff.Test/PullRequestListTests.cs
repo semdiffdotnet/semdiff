@@ -14,12 +14,16 @@ namespace SemDiff.Test
     {
         private const string owner = "semdiffdotnet";
         private const string repository = "curly-broccoli";
-        public static GitHub github;
+        private const string authUsername = "haroldhues";
+        private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
+        public static Repo github;
 
         [TestInitialize]
         public void TestInit()
         {
-            github = new GitHub(owner, repository, Repo.gitHubConfig.Username, Repo.gitHubConfig.AuthenicationToken);
+            
+            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+            github = new Repo(repoLoc,owner, repository, authUsername, authToken);
             github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
             if (new FileInfo(appDataFolder).Exists)
@@ -30,7 +34,7 @@ namespace SemDiff.Test
         public void NewGitHub()
         {
             Assert.AreEqual(github.RepoName, repository);
-            Assert.AreEqual(github.RepoOwner, owner);
+            Assert.AreEqual(github.Owner, owner);
         }
 
         [TestMethod]
@@ -80,7 +84,7 @@ namespace SemDiff.Test
             {
                 Assert.Inconclusive("Thou hast ran out of requests");
             }
-            github.RepoOwner = "dotnet";
+            github.Owner = "dotnet";
             github.RepoName = "roslyn";
             var roslynPRs = github.GetPullRequestsAsync().Result;
             Assert.IsTrue(roslynPRs.Count > 30);
@@ -165,7 +169,7 @@ namespace SemDiff.Test
             github.UpdateLocalSavedList();
             Assert.IsTrue(File.Exists(path));
             var json = File.ReadAllText(path);
-            var currentSaved = JsonConvert.DeserializeObject<IList<GitHub.PullRequest>>(json);
+            var currentSaved = JsonConvert.DeserializeObject<IList<Repo.PullRequest>>(json);
             Assert.AreEqual(github.CurrentSaved.Count, currentSaved.Count);
             var local = currentSaved.First();
             var gPR = github.CurrentSaved.First();
@@ -205,7 +209,7 @@ namespace SemDiff.Test
         {
             var requests = github.GetPullRequestsAsync().Result;
             github.UpdateLocalSavedList();
-            var newgithub = new GitHub(owner, repository);
+            var newgithub = new Repo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff)), owner, repository);
             Assert.IsNotNull(newgithub.CurrentSaved);
         }
 
