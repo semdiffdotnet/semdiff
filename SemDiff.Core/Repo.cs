@@ -27,7 +27,6 @@ namespace SemDiff.Core
     {
         internal static readonly GitHubConfiguration gitHubConfig =
             new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("SemDiff.Core/authentication"));
-
         private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)");
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         private static readonly Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");

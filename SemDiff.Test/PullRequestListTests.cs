@@ -14,13 +14,14 @@ namespace SemDiff.Test
     {
         private const string owner = "semdiffdotnet";
         private const string repository = "curly-broccoli";
+        private const string authUsername = "haroldhues";
+        private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
         public static Repo github;
 
         [TestInitialize]
         public void TestInit()
         {
-            var authUsername = "haroldhues";
-            var authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
+            
             var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
             github = new Repo(repoLoc,owner, repository, authUsername, authToken);
             github.UpdateLimitAsync().Wait();
