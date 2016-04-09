@@ -1,11 +1,9 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using MoreLinq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace SemDiff.Core
 {
@@ -25,7 +23,7 @@ namespace SemDiff.Core
             var pulls = GetPulls(repo, relativePath);
             foreach (var pull in pulls)
             {
-                var conflicts = Diff3.Compare(pull.File.Base, local, pull.File.File);
+                var conflicts = Diff3.Compare(pull.File.BaseTree, local, pull.File.HeadTree);
                 var locs = GetInsertedMethods(conflicts.Local);
                 var rems = GetInsertedMethods(conflicts.Remote);
 
@@ -102,21 +100,23 @@ namespace SemDiff.Core
         }
 
         //Given the base class and a file that contains another version of the file
-        private static IEnumerable<Diff> DiffClassVersion(ClassDeclarationSyntax b, RemoteFile f)
+        private static IEnumerable<Diff> DiffClassVersion(ClassDeclarationSyntax b, RepoFile f)
         {
-            var ancestorDecs = f.Base
+            var ancestorDecs = f.BaseTree
                                    .GetRoot()
                                    .DescendantNodes()
                                    .OfType<ClassDeclarationSyntax>();
 
-            var remoteDecs = f.File
+            var remoteDecs = f.HeadTree
                                     .GetRoot()
                                     .DescendantNodes()
                                     .OfType<ClassDeclarationSyntax>();
 
-            var merged = MergeClassDeclarationSyntaxes(ancestorDecs, remoteDecs).FirstOrDefault(t => AreSameClass(t.Item1, b));
+            var merged = MergeClassDeclarationSyntaxes(ancestorDecs, remoteDecs)
+                                    .FirstOrDefault(t => AreSameClass(t.Item1, b));
 
-            return Diff.Compare(merged.Item1, merged.Item2).Where(d => TriviaCompare.IsSemanticChange(d.Ancestor.Node, d.Changed.Node));
+            return Diff.Compare(merged.Item1, merged.Item2)
+                .Where(d => TriviaCompare.IsSemanticChange(d.Ancestor.Node, d.Changed.Node));
         }
 
         private static IEnumerable<BaseClass> GetBaseClasses(SemanticModel semanticModel)
@@ -142,13 +142,12 @@ namespace SemDiff.Core
                 return Enumerable.Empty<Pull>();
             }
             relativePath = relativePath.ToStandardPath();
-            return repo.RemoteChangesData
-                .Select(kvp => kvp.Value)
+            return repo.PullRequests
                 .SelectMany(p => p.Files
                                    .Select(f => new { n = f.Filename, f, p }))
                                    .Where(a => a.n == relativePath)
                                    .Select(a => new Pull(a.f, a.p))
-                .Cache();
+                .CacheEnumerable();
         }
 
         internal static string GetRelativePath(string localDirectory, string filePath)
@@ -170,7 +169,7 @@ namespace SemDiff.Core
 
         private static InnerMethodConflict GetInnerMethodConflicts(MethodDeclarationSyntax ancestor, SpanDetails changed, SpanDetails removed, IEnumerable<MethodDeclarationSyntax> insertedMethods, InnerMethodConflict.Local type)
         {
-            if (TriviaCompare.IsSpanInNodeTrivia(removed.Span, removed.Node))
+            if (!TriviaCompare.IsSpanInNodeTrivia(removed.Span, removed.Node))
             {
                 return null;
             }
@@ -222,7 +221,7 @@ namespace SemDiff.Core
             return diffs
                      .Where(diff => TriviaCompare.IsSpanInNodeTrivia(diff.Ancestor.Span, diff.Ancestor.Node))
                      .Select(diff => diff.Changed.Node as MethodDeclarationSyntax)
-                     .Where(node => node != null).Cache();
+                     .Where(node => node != null).CacheEnumerable();
         }
 
         private static IEnumerable<Tuple<ClassDeclarationSyntax, ClassDeclarationSyntax>>
@@ -244,14 +243,14 @@ namespace SemDiff.Core
         }
 
         //Essentially a named tuple with helpers. This inherits is because Tuple gives us useful things like the GetHashCode, Equals, and ToString
-        private class Pull : Tuple<RemoteFile, RemoteChanges>
+        private class Pull : Tuple<RepoFile, PullRequest>
         {
-            public Pull(RemoteFile file, RemoteChanges changes) : base(file, changes)
+            public Pull(RepoFile file, PullRequest changes) : base(file, changes)
             {
             }
 
-            public RemoteFile File => Item1;
-            public RemoteChanges Change => Item2;
+            public RepoFile File => Item1;
+            public PullRequest Change => Item2;
         }
 
         //Essentially a named tuple with helpers. This inherits is because Tuple gives us useful things like the GetHashCode, Equals, and ToString

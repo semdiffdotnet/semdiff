@@ -1,13 +1,11 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
+﻿using Newtonsoft.Json;
 using SemDiff.Core.Configuration;
 using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Configuration;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -45,7 +43,7 @@ namespace SemDiff.Core
             };
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-            RepoFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName);
+            CacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName);
 
             if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
             {
@@ -53,24 +51,27 @@ namespace SemDiff.Core
                 AuthToken = authToken;
                 Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
             }
-            GetCurrentSaved();
         }
+
+        #region Move to config object
 
         public static TimeSpan MaxUpdateInterval { get; set; } = TimeSpan.FromMinutes(5);
         public string AuthToken { get; set; }
         public string AuthUsername { get; set; }
+
+        #endregion Move to config object
+
+        public string CacheDirectory { get; set; }
+        public string CachedLocalPullRequestListPath => Path.Combine(CacheDirectory, "LocalList.json");
         public HttpClient Client { get; private set; }
-        public List<PullRequest> CurrentSaved { get; } = new List<PullRequest>();
         public string EtagNoChanges { get; set; }
-        public string JsonFileName { get; } = "LocalList.json";
         public DateTime LastUpdate { get; internal set; } = DateTime.MinValue;
         public string LocalDirectory { get; }
         public string Owner { get; set; }
-        public string RepoFolder { get; set; }
+        public List<PullRequest> PullRequests { get; } = new List<PullRequest>();
         public string RepoName { get; set; }
         public int RequestsLimit { get; private set; }
         public int RequestsRemaining { get; private set; }
-        internal ImmutableDictionary<int, RemoteChanges> RemoteChangesData { get; set; } = ImmutableDictionary<int, RemoteChanges>.Empty;
 
         /// <summary>
         /// Looks for the git repo above the current file in the directory hierarchy. Null will be returned if no repo was found.
@@ -83,57 +84,38 @@ namespace SemDiff.Core
         }
 
         /// <summary>
-        /// Download files for a given pull request. Store the files in the AppData folder with a
-        /// sub-folder for the pull request
-        /// </summary>
-        /// <param name="pr">the PullRequest for which the files need to be downloaded</param>
-        public async Task DownloadFilesAsync(PullRequest pr)
-        {
-            if (pr.LastWrite >= pr.Updated)
-                return;
-            foreach (var current in pr.Files)
-            {
-                var csFileTokens = current.Filename.Split('.');
-                if (csFileTokens.Last() == "cs")
-                {
-                    switch (current.Status)
-                    {
-                        case Files.StatusEnum.Added:
-                        case Files.StatusEnum.Removed:
-                        case Files.StatusEnum.Renamed: //Not sure how to handle this one...
-                            break;
-
-                        case Files.StatusEnum.Changed:
-                            Logger.Info($"The mythical 'changed' status has occurred! {pr.Number}:{current.Filename}");
-                            goto case Files.StatusEnum.Modified; //Effectively falls through to the following
-
-                        case Files.StatusEnum.Modified:
-                            var headTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Head.Sha);
-                            var ancTsk = DownloadFileAsync(pr.Number, current.Filename, pr.Base.Sha, isAncestor: true);
-                            await Task.WhenAll(headTsk, ancTsk);
-                            break;
-                    }
-                }
-            }
-            pr.LastWrite = DateTime.UtcNow;
-        }
-
-        /// <summary>
         /// Reads the pull requests from the persistent file
         /// </summary>
         public void GetCurrentSaved()
         {
+            Debug.Assert(this != null);
             try
             {
-                var path = RepoFolder.ToLocalPath();
-                path = Path.Combine(path, JsonFileName);
-                var json = File.ReadAllText(path);
-                CurrentSaved.Clear();
-                CurrentSaved.AddRange(JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json));
+                var path = CachedLocalPullRequestListPath;
+                if (File.Exists(path))
+                {
+                    var json = File.ReadAllText(path);
+                    var list = JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json);
+
+                    //Restore Self-Referential Loops
+                    foreach (var p in list)
+                    {
+                        p.ParentRepo = this;
+                        foreach (var r in p.Files)
+                        {
+                            r.ParentPullRequst = p;
+                            r.LoadFromCache();
+                        }
+                    }
+
+                    PullRequests.Clear();
+                    PullRequests.AddRange(list);
+                }
             }
             catch (Exception ex)
             {
-                Logger.Error($"{ex.GetType().Name}: Couldn't load {JsonFileName} because {ex.Message}");
+                //Directory.Delete(CacheDirectory); This may be a good idea with a few more checks
+                Logger.Error($"{ex.GetType().Name}: Couldn't load {CachedLocalPullRequestListPath} because {ex.Message}");
             }
         }
 
@@ -146,18 +128,20 @@ namespace SemDiff.Core
         {
             var url = $"/repos/{Owner}/{RepoName}/pulls";
             var etag = Ref.Create(EtagNoChanges);
-            var pullRequests = await GetPaginatedList<PullRequest>(url, etag);
+            var updated = await GetPaginatedListAsync<PullRequest>(url, etag);
+            var outdated = PullRequests;
             EtagNoChanges = etag.Value;
-            if (pullRequests == null)
+            if (updated == null)
             {
                 return null;
             }
-            if (CurrentSaved != null)
+            if (outdated != null)
             {
-                var prToRemove = CurrentSaved.Where(old => pullRequests.All(newpr => newpr.Number != old.Number));
-                foreach (var pr in pullRequests)
+                var prToRemove = outdated.Where(old => updated.All(newpr => newpr.Number != old.Number));
+                foreach (var pr in updated)
                 {
-                    var old = CurrentSaved.FirstOrDefault(o => o.Number == pr.Number);
+                    pr.ParentRepo = this;
+                    var old = outdated.FirstOrDefault(o => o.Number == pr.Number);
                     if (old != null)
                     {
                         pr.LastWrite = old.LastWrite;
@@ -165,15 +149,20 @@ namespace SemDiff.Core
                 }
                 DeletePRsFromDisk(prToRemove);
             }
-            pullRequests = await Task.WhenAll(pullRequests.Select(async pr =>
+            await Task.WhenAll(updated.Select(async pr =>
             {
-                pr.Files = await GetPaginatedList<Files>($"/repos/{Owner}/{RepoName}/pulls/{pr.Number}/files");
+                var files = await GetPaginatedListAsync<RepoFile>($"/repos/{Owner}/{RepoName}/pulls/{pr.Number}/files");
+                foreach (var f in files)
+                {
+                    f.ParentPullRequst = pr;
+                }
+                pr.Files = PullRequest.FilterFiles(files).ToList();
                 return pr;
             }));
-            CurrentSaved.Clear();
-            CurrentSaved.AddRange(pullRequests);
+            PullRequests.Clear();
+            PullRequests.AddRange(updated);
             UpdateLocalSavedList();
-            return pullRequests;
+            return updated;
         }
 
         /// <summary>
@@ -189,10 +178,10 @@ namespace SemDiff.Core
         /// </summary>
         public void UpdateLocalSavedList()
         {
-            var path = RepoFolder.ToLocalPath();
-            path = Path.Combine(path, JsonFileName);
+            var path = CacheDirectory.ToLocalPath();
+            path = Path.Combine(path, CachedLocalPullRequestListPath);
             new FileInfo(path).Directory.Create();
-            File.WriteAllText(path, JsonConvert.SerializeObject(CurrentSaved));
+            File.WriteAllText(path, JsonConvert.SerializeObject(PullRequests, Formatting.Indented));
         }
 
         /// <summary>
@@ -216,18 +205,7 @@ namespace SemDiff.Core
                 return;
             }
 
-            await Task.WhenAll(pulls.Select(DownloadFilesAsync));
-
-            //Many Changes will be made to the Immutable Dictionary so we will use the builder interface
-            var remChanges = RemoteChangesData.ToBuilder();
-
-            foreach (var p in pulls)
-            {
-                remChanges[p.Number] = p.ToRemoteChanges(RepoFolder);
-            }
-
-            //Update our RemoteChangesData reference to new data
-            RemoteChangesData = remChanges.ToImmutable();
+            await Task.WhenAll(pulls.Select(p => p.GetFilesAsync()));
         }
 
         internal static Repo AddRepo(string directoryPath)
@@ -298,10 +276,12 @@ namespace SemDiff.Core
                 name = name.Substring(0, name.Length - 4);
             }
             Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
-            return new Repo(repoDir, owner, name);
+            var repo = new Repo(repoDir, owner, name);
+            repo.GetCurrentSaved();
+            return repo;
         }
 
-        internal async Task<IList<T>> GetPaginatedList<T>(string url, Ref<string> etag = null)
+        internal async Task<IList<T>> GetPaginatedListAsync<T>(string url, Ref<string> etag = null)
         {
             var pagination = Ref.Create<string>(null);
             var first = await HttpGetAsync<IList<T>>(url, etag, pagination);
@@ -317,57 +297,6 @@ namespace SemDiff.Core
                 list.AddRange(next);
             }
             return list;
-        }
-
-        private static T DeserializeWithErrorHandling<T>(string content)
-        {
-            try
-            {
-                return JsonConvert.DeserializeObject<T>(content);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"{nameof(GitHubDeserializationException)}: {ex.Message}");
-                throw new GitHubDeserializationException(ex);
-            }
-        }
-
-        private static string ParseNextLink(IEnumerable<string> links)
-        {
-            foreach (var l in links)
-            {
-                var match = nextLinkPattern.Match(l);
-                if (match.Success)
-                {
-                    return match.Groups[1].Value;
-                }
-            }
-            return null;
-        }
-
-        private void DeletePRsFromDisk(IEnumerable<PullRequest> prs)
-        {
-            foreach (var pr in prs)
-            {
-                var dir = Path.Combine(RepoFolder, $"{pr.Number}");
-                try
-                {
-                    Directory.Delete(dir, true);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error($"{ex.GetType().Name}: Couldn't delete {dir} because {ex.Message}");
-                }
-            }
-        }
-
-        private async Task DownloadFileAsync(int prNum, string path, string sha, bool isAncestor = false)
-        {
-            var rawText = await HttpGetAsync($@"https://github.com/{Owner}/{RepoName}/raw/{sha}/{path}");
-            path = path.ToStandardPath();
-            var dir = GetPathInCache(RepoFolder, prNum, path, isAncestor);
-            new FileInfo(dir).Directory.Create();
-            File.WriteAllText(dir, rawText);
         }
 
         /// <summary>
@@ -389,7 +318,7 @@ namespace SemDiff.Core
         /// A Task that once awaited will result in the pages contents being deserialized into the
         /// return object
         /// </returns>
-        private async Task<T> HttpGetAsync<T>(string url, Ref<string> etag = null, Ref<string> pages = null) where T : class
+        internal async Task<T> HttpGetAsync<T>(string url, Ref<string> etag = null, Ref<string> pages = null) where T : class
         {
             var content = await HttpGetAsync(url, etag, pages);
             if (content == null)
@@ -397,7 +326,7 @@ namespace SemDiff.Core
             return DeserializeWithErrorHandling<T>(content);
         }
 
-        private async Task<string> HttpGetAsync(string url, Ref<string> etag = null, Ref<string> pages = null)
+        internal async Task<string> HttpGetAsync(string url, Ref<string> etag = null, Ref<string> pages = null)
         {
             //Request, but retry once waiting 5 minutes
             Client.DefaultRequestHeaders.IfNoneMatch.Clear();
@@ -450,97 +379,46 @@ namespace SemDiff.Core
             return await response.Content.ReadAsStringAsync();
         }
 
-        /// <summary>
-        /// Object used for parsing that reflects the json of the object that GitHub uses for files
-        /// </summary>
-        public class Files
+        private static T DeserializeWithErrorHandling<T>(string content)
         {
-            public enum StatusEnum
+            try
             {
-                Added,
-                Modified,
-                Removed,
-                Renamed,
-
-                //Mostly undocumented, occurs rarely
-                //Seems to show up when only the file permissions were changed
-                //or if there are too many files it the pull request (more than about 200)
-                Changed
+                return JsonConvert.DeserializeObject<T>(content);
             }
-
-            public string Filename { get; set; }
-
-            [JsonConverter(typeof(StringEnumConverter))]
-            public StatusEnum Status { get; set; }
-
-            internal RemoteFile ToRemoteFile(string repofolder, int num)
+            catch (Exception ex)
             {
-                var baseP = GetPathInCache(repofolder, num, Filename, isAncestor: true);
-                var fileP = GetPathInCache(repofolder, num, Filename, isAncestor: false);
-                return new RemoteFile
+                Logger.Error($"{nameof(GitHubDeserializationException)}: {ex.Message}");
+                throw new GitHubDeserializationException(ex);
+            }
+        }
+
+        private static string ParseNextLink(IEnumerable<string> links)
+        {
+            foreach (var l in links)
+            {
+                var match = nextLinkPattern.Match(l);
+                if (match.Success)
                 {
-                    Filename = Filename,
-                    Base = CSharpSyntaxTree.ParseText(File.ReadAllText(baseP), path: baseP),
-                    File = CSharpSyntaxTree.ParseText(File.ReadAllText(fileP), path: fileP)
-                };
+                    return match.Groups[1].Value;
+                }
             }
+            return null;
         }
 
-        /// <summary>
-        /// Object used for parsing that reflects the json of the object that GitHub uses inside of
-        /// the pull request object
-        /// </summary>
-        public class HeadBase
+        private void DeletePRsFromDisk(IEnumerable<PullRequest> prs)
         {
-            public string Label { get; set; }
-            public string Ref { get; set; }
-            public string Sha { get; set; }
-        }
-
-        /// <summary>
-        /// Object used for parsing that reflects the json of the object that GitHub uses for Pull Requests
-        /// </summary>
-        public class PullRequest
-        {
-            public HeadBase Base { get; set; }
-            public IList<Files> Files { get; set; }
-            public HeadBase Head { get; set; }
-            public DateTime LastWrite { get; set; } = DateTime.MinValue;
-            public bool Locked { get; set; }
-            public int Number { get; set; }
-            public string State { get; set; }
-            public string Title { get; set; }
-
-            [JsonProperty("updated_at")]
-            public DateTime Updated { get; set; }
-
-            [JsonProperty("html_url")]
-            public string Url { get; set; }
-
-            public User User { get; set; }
-
-            internal RemoteChanges ToRemoteChanges(string repofolder)
+            foreach (var pr in prs)
             {
-                return new RemoteChanges
+                var dir = Path.Combine(CacheDirectory, $"{pr.Number}");
+                try
                 {
-                    Date = Updated,
-                    Title = Title,
-                    Url = Url,
-                    Files = Files
-                        .Where(f => f.Status == Repo.Files.StatusEnum.Modified || f.Status == Repo.Files.StatusEnum.Changed)
-                        .Where(f => f.Filename.Split('.').Last() == "cs")
-                        .Select(f => f.ToRemoteFile(repofolder, Number))
-                        .Cache(),
-                };
+                    Directory.Delete(dir, true);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"{ex.GetType().Name}: Couldn't delete {dir} because {ex.Message}");
+                }
             }
-        }
-
-        /// <summary>
-        /// Object used for parsing that reflects the json object that GitHub uses to represent users.
-        /// </summary>
-        public class User
-        {
-            public string Login { get; set; }
         }
 
         /// <summary>

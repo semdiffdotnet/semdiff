@@ -80,8 +80,15 @@ namespace SemDiff.Core
                     }
                 }
 
-                return repos.SelectMany(r => data.GetTreesForRepo(r).Select(t => new { t, r }))
-                                                 .SelectMany(tr => Analyze(comp.GetSemanticModel(tr.t), tr.r));
+                var diagnostics = new List<Diagnostic>();
+                foreach (var r in repos)
+                {
+                    foreach (var t in data.GetTreesForRepo(r))
+                    {
+                        diagnostics.AddRange(Analyze(comp.GetSemanticModel(t), r));
+                    }
+                }
+                return diagnostics;
             }
             catch (Exception ex)
             {

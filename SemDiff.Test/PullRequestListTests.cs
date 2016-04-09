@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace SemDiff.Test
 {
@@ -21,9 +20,8 @@ namespace SemDiff.Test
         [TestInitialize]
         public void TestInit()
         {
-            
             var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
-            github = new Repo(repoLoc,owner, repository, authUsername, authToken);
+            github = new Repo(repoLoc, owner, repository, authUsername, authToken);
             github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
             if (new FileInfo(appDataFolder).Exists)
@@ -49,9 +47,7 @@ namespace SemDiff.Test
             var r = requests.ElementAt(requests.Count - 4);
             if (r.Number == 4)
             {
-                Assert.AreEqual(r.Locked, false);
                 Assert.AreEqual(r.State, "open");
-                Assert.AreEqual(r.User.Login, "haroldhues");
                 Assert.AreEqual(r.Files.Count, 1);
                 foreach (var f in r.Files)
                 {
@@ -97,13 +93,12 @@ namespace SemDiff.Test
             {
                 Assert.Inconclusive("Thou hast ran out of requests");
             }
+            github.Owner = "semdiffdotnet";
+            github.RepoName = "50states";
             var PRs = github.GetPullRequestsAsync().Result;
-            Assert.IsTrue(PRs.Count >= 5);
-            foreach (var pr in PRs)
-            {
-                if (pr.Number == 5)
-                    Assert.AreEqual(40, pr.Files.Count);
-            }
+            Assert.AreEqual(1, PRs.Count);
+            var pr = PRs.First();
+            Assert.AreEqual(84, pr.Files.Count);
         }
 
         [TestMethod]
@@ -117,70 +112,61 @@ namespace SemDiff.Test
             var fourWasFound = false;
             foreach (var r in requests)
             {
-                github.DownloadFilesAsync(r).Wait();
+                r.GetFilesAsync().Wait();
                 if (r.Number == 4)
                 {
                     fourWasFound = true;
-                    string line;
                     var counter = 0;
                     string[] directoryTokens;
                     var dir = "";
-                    foreach (var f in r.Files)
-                    {
-                        directoryTokens = f.Filename.Split('/');
-                        dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "/SemDiff/semdiffdotnet/curly-broccoli/";
+                    var f = r.Files.Last();
+                    directoryTokens = f.Filename.Split('/');
+                    dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "/SemDiff/semdiffdotnet/curly-broccoli/".ToLocalPath();
 
-                        dir = Path.Combine(dir, r.Number.ToString(), f.Filename);
-                    }
-                    using (var file = new System.IO.StreamReader(dir))
+                    dir = Path.Combine(dir, r.Number.ToString(), f.Filename.ToLocalPath());
+                    var text = File.ReadAllText(dir);
+                    foreach (var line in File.ReadAllLines(dir))
                     {
-                        while ((line = file.ReadLine()) != null)
+                        if (counter == 6)
                         {
-                            if (counter == 6)
-                            {
-                                var expected = "namespace Curly";
-                                Assert.AreEqual(line, expected);
-                            }
-                            if (counter == 9)
-                            {
-                                var expected = "    /// Utility for logging to an internal list of Log entities";
-                                Assert.AreEqual(line, expected);
-                            }
-                            counter++;
+                            var expected = "namespace Curly";
+                            Assert.AreEqual(line, expected);
                         }
-
-                        file.Close();
+                        if (counter == 9)
+                        {
+                            var expected = "    /// Utility for logging to an internal list of Log entities";
+                            Assert.AreEqual(line, expected);
+                        }
+                        counter++;
                     }
-                    Assert.AreEqual(counter, 34);
+                    Assert.AreEqual(34, counter);
                 }
             }
-            Assert.AreEqual(fourWasFound, true);
+            Assert.IsTrue(fourWasFound);
         }
 
         [TestMethod]
         public void UpdateLocalSaved()
         {
             github.GetPullRequestsAsync().Wait();
-            var path = github.RepoFolder.Replace('/', Path.DirectorySeparatorChar);
-            path = Path.Combine(path, github.JsonFileName);
+            var path = github.CacheDirectory.Replace('/', Path.DirectorySeparatorChar);
+            path = Path.Combine(path, github.CachedLocalPullRequestListPath);
             new FileInfo(path).Directory.Create();
             if (File.Exists(path))
                 File.Delete(path);
             github.UpdateLocalSavedList();
             Assert.IsTrue(File.Exists(path));
             var json = File.ReadAllText(path);
-            var currentSaved = JsonConvert.DeserializeObject<IList<Repo.PullRequest>>(json);
-            Assert.AreEqual(github.CurrentSaved.Count, currentSaved.Count);
+            var currentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
+            Assert.AreEqual(github.PullRequests.Count, currentSaved.Count);
             var local = currentSaved.First();
-            var gPR = github.CurrentSaved.First();
+            var gPR = github.PullRequests.First();
             Assert.AreEqual(local.Number, gPR.Number);
             Assert.AreEqual(local.State, gPR.State);
             Assert.AreEqual(local.Title, gPR.Title);
-            Assert.AreEqual(local.Locked, gPR.Locked);
             Assert.AreEqual(local.Updated, gPR.Updated);
             Assert.AreEqual(local.LastWrite, gPR.LastWrite);
             Assert.AreEqual(local.Url, gPR.Url);
-            Assert.IsNotNull(local.User);
             Assert.IsNotNull(local.Head);
             Assert.IsNotNull(local.Base);
             Assert.IsNotNull(local.Files);
@@ -190,13 +176,13 @@ namespace SemDiff.Test
         public void RemoveUnusedLocalFiles()
         {
             var requests = github.GetPullRequestsAsync().Result;
-            var zeroDir = Path.Combine(github.RepoFolder.Replace('/', Path.DirectorySeparatorChar), "0");
+            var zeroDir = Path.Combine(github.CacheDirectory.Replace('/', Path.DirectorySeparatorChar), "0");
             Directory.CreateDirectory(zeroDir);
             var prZero = requests.First().Clone();
             prZero.Number = 0;
-            github.CurrentSaved.Add(prZero);
-            var json = Path.Combine(github.RepoFolder.Replace('/', Path.DirectorySeparatorChar), github.JsonFileName);
-            File.WriteAllText(json, JsonConvert.SerializeObject(github.CurrentSaved));
+            github.PullRequests.Add(prZero);
+            var json = github.CachedLocalPullRequestListPath;
+            File.WriteAllText(json, JsonConvert.SerializeObject(github.PullRequests));
             github.GetCurrentSaved();
             github.EtagNoChanges = null;
             requests = github.GetPullRequestsAsync().Result;
@@ -210,7 +196,8 @@ namespace SemDiff.Test
             var requests = github.GetPullRequestsAsync().Result;
             github.UpdateLocalSavedList();
             var newgithub = new Repo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff)), owner, repository);
-            Assert.IsNotNull(newgithub.CurrentSaved);
+            newgithub.GetCurrentSaved();
+            Assert.IsNotNull(newgithub.PullRequests);
         }
 
         [TestMethod]
@@ -220,7 +207,7 @@ namespace SemDiff.Test
             var path = "";
             foreach (var r in requests)
             {
-                github.DownloadFilesAsync(r).Wait();
+                r.GetFilesAsync().Wait();
                 if (r.Number == 1)
                 {
                     foreach (var files in r.Files)
@@ -234,7 +221,7 @@ namespace SemDiff.Test
             requests = github.GetPullRequestsAsync().Result;
             foreach (var r in requests)
             {
-                github.DownloadFilesAsync(r).Wait();
+                r.GetFilesAsync().Wait();
             }
             Assert.IsTrue(fileLastUpdated == File.GetLastWriteTimeUtc(path));
         }

@@ -1,7 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SemDiff.Core;
-using System;
-using System.Linq;
 
 namespace SemDiff.Test
 {

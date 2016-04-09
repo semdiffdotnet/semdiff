@@ -32,10 +32,10 @@ namespace SemDiff.Test
             //These files are in the cloned directory!
 
             //'Remote' False Negative B (Optimize Logger by not calling Log) #4
-            remoteBase = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 4, baseClass).ParseFile();
+            remoteBase = Repo.GetPathInCache(CurlyBroccoli.CacheDirectory, 4, baseClass).ParseFile();
 
             //Ancestor
-            ancestorBase = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 3, baseClass, isAncestor: true).ParseFile();
+            ancestorBase = Repo.GetPathInCache(CurlyBroccoli.CacheDirectory, 3, baseClass, isAncestor: true).ParseFile();
         }
 
         [TestMethod]
@@ -54,13 +54,13 @@ namespace SemDiff.Test
 
             //Need a remote file (ancestor and remote versions) for the base classes
             var repo = CurlyBroccoli;
-            repo.RemoteChangesData = repo.RemoteChangesData.Clear();
-            repo.RemoteChangesData = repo.RemoteChangesData.Add(1, new RemoteChanges
+            repo.PullRequests.Clear();
+            repo.PullRequests.Add(new PullRequest
             {
-                Date = DateTime.Now,
-                Files = new[] { new RemoteFile {
-                    Base = ancestorBase,
-                    File = remoteBase,
+                Updated = DateTime.Now,
+                Files = new[] { new RepoFile {
+                    BaseTree = ancestorBase,
+                    HeadTree = remoteBase,
                     Filename = baseClass
                 } },
                 Title = "Fake Pull Request",

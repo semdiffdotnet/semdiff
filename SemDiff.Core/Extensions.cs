@@ -4,10 +4,8 @@ using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace SemDiff.Core
@@ -132,7 +130,7 @@ namespace SemDiff.Core
         /// <typeparam name="T"></typeparam>
         /// <param name="source"></param>
         /// <returns></returns>
-        public static IEnumerable<T> Cache<T>(this IEnumerable<T> source)
+        public static IEnumerable<T> CacheEnumerable<T>(this IEnumerable<T> source)
         {
             return new CacheIterator<T>(source);
         }
