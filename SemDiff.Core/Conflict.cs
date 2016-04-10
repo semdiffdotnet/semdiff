@@ -49,7 +49,7 @@ namespace SemDiff.Core
 
         private static Tuple<Diff, Diff> FindStartEnd(IEnumerable<Diff> inp)
         {
-            var local = inp.Cache();
+            var local = inp.CacheEnumerable();
             var firstLocal = local.MinBy(d => d.Changed.Span.Start);
             var lastLocal = local.MaxBy(d => d.Changed.Span.End);
             var fllocal = Tuple.Create(firstLocal, lastLocal);

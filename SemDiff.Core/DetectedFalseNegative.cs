@@ -9,8 +9,8 @@ namespace SemDiff.Core
     public class DetectedFalseNegative
     {
         public Location Location { get; internal set; }
-        public RemoteChanges RemoteChange { get; internal set; }
-        public RemoteFile RemoteFile { get; internal set; }
+        public PullRequest RemoteChange { get; internal set; }
+        public RepoFile RemoteFile { get; internal set; }
         public string TypeName { get; internal set; }
 
         public override string ToString()

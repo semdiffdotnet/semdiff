@@ -1,7 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SemDiff.Core;
-using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -19,7 +17,7 @@ namespace SemDiff.Test
             Assert.AreNotEqual(1, one.First());
 
             //With Cache
-            var two = GetTestEnumerable().Cache();
+            var two = GetTestEnumerable().CacheEnumerable();
             foreach (var i in two) { } //Enumerate once
             Assert.AreEqual(1, two.First());
         }
@@ -34,7 +32,7 @@ namespace SemDiff.Test
             Assert.AreNotEqual(11, one.Skip(10).First());
 
             //With Cache
-            var two = GetTestEnumerable().Cache();
+            var two = GetTestEnumerable().CacheEnumerable();
             two.Take(5).ToList();
             two.Skip(5).Take(5).ToList();
             Assert.AreEqual(11, two.Skip(10).First());
@@ -45,7 +43,7 @@ namespace SemDiff.Test
         {
             //This is a verbose test that test for correct behavior when moving through the list twice at the same time.
 
-            var source = GetTestEnumerable().Cache();
+            var source = GetTestEnumerable().CacheEnumerable();
             var one = source.GetEnumerator();
             //Manually Enumerate 10
             ManuallyEnumerate10(one, new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 });

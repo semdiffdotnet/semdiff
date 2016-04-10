@@ -1,6 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -29,8 +28,8 @@ namespace SemDiff.Core
         /// </returns>
         public static Diff3Result Compare(SyntaxTree ancestor, SyntaxTree local, SyntaxTree remote)
         {
-            var localChanges = Diff.Compare(ancestor, local).Cache();
-            var remoteChanges = Diff.Compare(ancestor, remote).Cache();
+            var localChanges = Diff.Compare(ancestor, local).CacheEnumerable();
+            var remoteChanges = Diff.Compare(ancestor, remote).CacheEnumerable();
 
             return new Diff3Result
             {

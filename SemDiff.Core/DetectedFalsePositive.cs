@@ -15,8 +15,8 @@ namespace SemDiff.Core
         }
 
         public Location Location { get; set; }
-        public RemoteChanges RemoteChange { get; set; }
-        public RemoteFile RemoteFile { get; set; }
+        public PullRequest RemoteChange { get; set; }
+        public RepoFile RemoteFile { get; set; }
         public ConflictTypes ConflictType { get; set; }
 
         public override string ToString()

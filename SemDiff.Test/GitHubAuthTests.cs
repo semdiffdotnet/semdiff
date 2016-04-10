@@ -15,7 +15,7 @@
         private const string authUsername = "haroldhues";
         private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
 
-        private IList<Repo.PullRequest> pullRequests;
+        private IList<PullRequest> pullRequests;
         private Repo github;
 
         public GitHubAuthTest()

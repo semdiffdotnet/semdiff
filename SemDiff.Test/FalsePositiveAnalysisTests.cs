@@ -22,11 +22,11 @@ namespace SemDiff.Test
 
             var path = Path.GetFullPath(Path.Combine("curly", relativePath));
             //False Positive A (Function12 moved, but not changed)
-            fpA = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 1, relativePath).ParseFile(setPath: path);
+            fpA = Repo.GetPathInCache(CurlyBroccoli.CacheDirectory, 1, relativePath).ParseFile(setPath: path);
             //False Positive B (Function12 changed)
-            fpB = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 2, relativePath).ParseFile(setPath: path);
+            fpB = Repo.GetPathInCache(CurlyBroccoli.CacheDirectory, 2, relativePath).ParseFile(setPath: path);
             //Ancestor (shared by both)
-            fpC = Repo.GetPathInCache(CurlyBroccoli.RepoFolder, 2, relativePath, isAncestor: true).ParseFile(setPath: path);
+            fpC = Repo.GetPathInCache(CurlyBroccoli.CacheDirectory, 2, relativePath, isAncestor: true).ParseFile(setPath: path);
         }
 
         [TestMethod]
@@ -39,18 +39,27 @@ namespace SemDiff.Test
         private static void OneSide(Repo repo, SyntaxTree local, SyntaxTree remote, SyntaxTree ancestor, string path)
         {
             //Fake a call te to GetRemoteChange() by placeing the remote and ancestor trees into the RemoteChangesData list
-            repo.RemoteChangesData = repo.RemoteChangesData.Clear();
-            repo.RemoteChangesData = repo.RemoteChangesData.Add(1, new RemoteChanges
+            repo.PullRequests.Clear();
+            repo.PullRequests.Add(new PullRequest
             {
-                Date = DateTime.Now,
-                Files = new[] { new RemoteFile {
-                    Base = ancestor,
-                    File = remote,
-                    Filename = path
+                Updated = DateTime.Now,
+                Files = new[] { new Core.RepoFile {
+                    BaseTree = ancestor,
+                    HeadTree = remote,
+                    Filename = path,
+                    Status = RepoFile.StatusEnum.Modified,
                 } },
                 Title = "Fake Pull Request",
-                Url = "http://github.com/example/repo"
+                Url = "http://github.com/example/repo",
+                Number = 1,
+                State = "open",
+                LastWrite = DateTime.MinValue,
+                Base = new PullRequest.HeadBase { Sha = "" },
+                Head = new PullRequest.HeadBase { Sha = "" },
             });
+            var pr = repo.PullRequests.First();
+            pr.ParentRepo = repo;
+            pr.Files.First().ParentPullRequst = pr;
 
             var res = Analysis.ForFalsePositive(repo, local);
             Assert.IsTrue(res.Any());

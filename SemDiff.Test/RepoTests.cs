@@ -17,17 +17,17 @@ namespace SemDiff.Test
         public void RepoGetChangedFiles()
         {
             CurlyBroccoli.UpdateRemoteChangesAsync().Wait();
-            var pulls = CurlyBroccoli.RemoteChangesData.Values.ToList();
+            var pulls = CurlyBroccoli.PullRequests.ToList();
             Assert.AreEqual(5, pulls.Count);
             foreach (var p in pulls)
             {
                 Assert.IsNotNull(p.Files);
                 Assert.IsNotNull(p.Title);
-                Assert.AreNotEqual(default(DateTime), p.Date);
+                Assert.AreNotEqual(default(DateTime), p.Updated);
                 foreach (var f in p.Files)
                 {
-                    Assert.IsNotNull(f.Base);
-                    Assert.IsNotNull(f.File);
+                    Assert.IsNotNull(f.BaseTree);
+                    Assert.IsNotNull(f.HeadTree);
                     Assert.IsNotNull(f.Filename);
                 }
             }
