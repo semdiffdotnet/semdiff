@@ -39,7 +39,7 @@ namespace SemDiff.Core
 
         public const string InternalErrorDiagnosticId = nameof(SemDiff);
 
-        private const string InternalErrorMessageFormat = "SemDiff Error: {0}";
+        private const string InternalErrorMessageFormat = "SemDiff Error - {0}";
 
         private const string InternalErrorTitle = "SemDiff Internal Error";
 
