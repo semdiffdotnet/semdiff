@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using LibGit2Sharp;
+using Newtonsoft.Json;
 using SemDiff.Core.Configuration;
 using SemDiff.Core.Exceptions;
 using System;
@@ -80,7 +81,40 @@ namespace SemDiff.Core
         /// <returns>Representation of repo or null (to indicate not found)</returns>
         public static Repo GetRepoFor(string filePath)
         {
-            return _repoLookup.GetOrAdd(Path.GetDirectoryName(filePath), AddRepo);
+            var repoDir = Repository.Discover(filePath);
+            if (repoDir == null)
+            {
+                return null;
+            }
+            return _repoLookup.GetOrAdd(repoDir, AddRepo);
+        }
+
+        private static Repo AddRepo(string repoDir)
+        {
+            using (var r = new Repository(repoDir))
+            {
+                var matchingUrls = r.Network.Remotes
+                    .Select(remote => _gitHubUrl.Match(remote.Url))
+                    .Where(m => m.Success);
+                var match = matchingUrls.FirstOrDefault();
+                if (match == null)
+                {
+                    Logger.Error(nameof(GitHubUrlNotFoundException));
+                    throw new GitHubUrlNotFoundException(path: repoDir);
+                }
+
+                var url = match.Value.Trim();
+                var owner = match.Groups[3].Value.Trim();
+                var name = match.Groups[4].Value.Trim();
+                if (name.EndsWith(".git"))
+                {
+                    name = name.Substring(0, name.Length - 4);
+                }
+                Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
+                var repo = new Repo(repoDir, owner, name);
+                repo.GetCurrentSaved();
+                return repo;
+            }
         }
 
         /// <summary>
@@ -208,36 +242,6 @@ namespace SemDiff.Core
             await Task.WhenAll(pulls.Select(p => p.GetFilesAsync()));
         }
 
-        internal static Repo AddRepo(string directoryPath)
-        {
-            Logger.Debug($"Dir: {directoryPath}");
-            var gitconfig = Path.Combine(directoryPath, ".git", "config");
-            if (File.Exists(gitconfig))
-            {
-                Logger.Info($".gitconfig File Found: {gitconfig}");
-                return RepoFromConfig(directoryPath, gitconfig);
-            }
-            else
-            {
-                //Go up a directory and check it out
-                var parentDirectory = Path.GetDirectoryName(directoryPath);
-                if (parentDirectory == null)
-                {
-                    //This file is not in a git repo! (GetDirectoryName returns null when given the root directory)
-                    return null; //This is much more common than you might think, because often random files are compiled, this will allow us to exclude them
-                }
-                return _repoLookup.GetOrAdd(parentDirectory, AddRepo);
-            }
-        }
-
-        /// <summary>
-        /// Flushes the internal mappings of directories to repos
-        /// </summary>
-        internal static void ClearLookup()
-        {
-            _repoLookup.Clear();
-        }
-
         /// <summary>
         /// Construct the absolute path of a file in a pull request
         /// </summary>
@@ -256,29 +260,6 @@ namespace SemDiff.Core
             }
 
             return dir;
-        }
-
-        internal static Repo RepoFromConfig(string repoDir, string gitconfigPath)
-        {
-            var config = File.ReadAllText(gitconfigPath);
-            var match = _gitHubUrl.Match(config);
-            if (!match.Success)
-            {
-                Logger.Error(nameof(GitHubUrlNotFoundException));
-                throw new GitHubUrlNotFoundException(path: repoDir);
-            }
-
-            var url = match.Value.Trim();
-            var owner = match.Groups[3].Value.Trim();
-            var name = match.Groups[4].Value.Trim();
-            if (name.EndsWith(".git"))
-            {
-                name = name.Substring(0, name.Length - 4);
-            }
-            Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
-            var repo = new Repo(repoDir, owner, name);
-            repo.GetCurrentSaved();
-            return repo;
         }
 
         internal async Task<IList<T>> GetPaginatedListAsync<T>(string url, Ref<string> etag = null)

@@ -1,6 +1,8 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SemDiff.Core;
 using System;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace SemDiff.Test
 {
@@ -11,6 +13,18 @@ namespace SemDiff.Test
         public static void ClassInit(TestContext context)
         {
             CloneCurlyBrocoli();
+        }
+
+        [TestMethod]
+        public void CheckRateLimit()
+        {
+            CurlyBroccoli.UpdateLimitAsync().Wait();
+            var limit = CurlyBroccoli.RequestsLimit;
+            var remaining = CurlyBroccoli.RequestsRemaining;
+            if ((float)remaining / limit < 0.1)
+            {
+                Assert.Inconclusive("There are less than 10% of requests remaining before the rate limit is hit");
+            }
         }
 
         [TestMethod]
@@ -32,5 +46,16 @@ namespace SemDiff.Test
                 }
             }
         }
+
+        [TestMethod]
+        public void GetRepoForThisFileTest()
+        {
+            var thisFile = GetFileName();
+            var repo = Repo.GetRepoFor(thisFile);
+            Assert.AreEqual("semdiffdotnet", repo.Owner);
+            Assert.AreEqual("semdiff", repo.RepoName);
+        }
+
+        private string GetFileName([CallerFilePath] string file = "") => file;
     }
 }
