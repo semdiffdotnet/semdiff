@@ -31,12 +31,12 @@ namespace SemDiff.Core
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         private static readonly Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
 
-        public Repo(string directory, string repoOwner, string repoName, string authUsername = null, string authToken = null)
+        public Repo(string gitDir, string repoOwner, string repoName, string authUsername = null, string authToken = null)
         {
             Logger.Info($"{nameof(Repo)}: {authUsername}:{authToken} for {repoOwner}\\{repoName}");
             Owner = repoOwner;
             RepoName = repoName;
-            LocalDirectory = directory;
+            LocalGitDirectory = gitDir;
             EtagNoChanges = null;
             Client = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate })
             {
@@ -67,11 +67,14 @@ namespace SemDiff.Core
         public HttpClient Client { get; private set; }
         public string EtagNoChanges { get; set; }
         public DateTime LastUpdate { get; internal set; } = DateTime.MinValue;
-        public string LocalDirectory { get; }
+        public string LocalGitDirectory { get; }
+        public string LocalRepoDirectory => Path.GetDirectoryName(Path.GetDirectoryName(LocalGitDirectory));
         public string Owner { get; set; }
         public List<PullRequest> PullRequests { get; } = new List<PullRequest>();
         public string RepoName { get; set; }
+
         public int RequestsLimit { get; private set; }
+
         public int RequestsRemaining { get; private set; }
 
         /// <summary>
@@ -87,34 +90,6 @@ namespace SemDiff.Core
                 return null;
             }
             return _repoLookup.GetOrAdd(repoDir, AddRepo);
-        }
-
-        private static Repo AddRepo(string repoDir)
-        {
-            using (var r = new Repository(repoDir))
-            {
-                var matchingUrls = r.Network.Remotes
-                    .Select(remote => _gitHubUrl.Match(remote.Url))
-                    .Where(m => m.Success);
-                var match = matchingUrls.FirstOrDefault();
-                if (match == null)
-                {
-                    Logger.Error(nameof(GitHubUrlNotFoundException));
-                    throw new GitHubUrlNotFoundException(path: repoDir);
-                }
-
-                var url = match.Value.Trim();
-                var owner = match.Groups[3].Value.Trim();
-                var name = match.Groups[4].Value.Trim();
-                if (name.EndsWith(".git"))
-                {
-                    name = name.Substring(0, name.Length - 4);
-                }
-                Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
-                var repo = new Repo(repoDir, owner, name);
-                repo.GetCurrentSaved();
-                return repo;
-            }
         }
 
         /// <summary>
@@ -262,6 +237,41 @@ namespace SemDiff.Core
             return dir;
         }
 
+        internal bool FileChangedLocally(string filePath)
+        {
+            using (var repo = new Repository(LocalGitDirectory))
+            {
+                var fileStatus = repo.RetrieveStatus(filePath);
+                switch (fileStatus)
+                {
+                    case FileStatus.NewInIndex:
+                    case FileStatus.ModifiedInIndex:
+                    case FileStatus.RenamedInIndex:
+                    case FileStatus.TypeChangeInIndex:
+                    case FileStatus.NewInWorkdir:
+                    case FileStatus.ModifiedInWorkdir:
+                    case FileStatus.TypeChangeInWorkdir:
+                    case FileStatus.RenamedInWorkdir:
+                    case FileStatus.Conflicted:
+                        return true;
+
+                    //These are odd in that they shouldn't actually happen
+                    case FileStatus.Nonexistent:
+                    case FileStatus.DeletedFromIndex:
+                    case FileStatus.DeletedFromWorkdir:
+                        return true;
+
+                    case FileStatus.Unreadable:
+                    case FileStatus.Ignored:
+                    case FileStatus.Unaltered:
+                        return false;
+
+                    default:
+                        throw new NotImplementedException($"{fileStatus}");
+                }
+            }
+        }
+
         internal async Task<IList<T>> GetPaginatedListAsync<T>(string url, Ref<string> etag = null)
         {
             var pagination = Ref.Create<string>(null);
@@ -358,6 +368,34 @@ namespace SemDiff.Core
                 pages.Value = response.Headers.TryGetValues("Link", out headerVal) ? ParseNextLink(headerVal) : null;
             }
             return await response.Content.ReadAsStringAsync();
+        }
+
+        private static Repo AddRepo(string repoDir)
+        {
+            using (var r = new Repository(repoDir))
+            {
+                var matchingUrls = r.Network.Remotes
+                    .Select(remote => _gitHubUrl.Match(remote.Url))
+                    .Where(m => m.Success);
+                var match = matchingUrls.FirstOrDefault();
+                if (match == null)
+                {
+                    Logger.Error(nameof(GitHubUrlNotFoundException));
+                    throw new GitHubUrlNotFoundException(path: repoDir);
+                }
+
+                var url = match.Value.Trim();
+                var owner = match.Groups[3].Value.Trim();
+                var name = match.Groups[4].Value.Trim();
+                if (name.EndsWith(".git"))
+                {
+                    name = name.Substring(0, name.Length - 4);
+                }
+                Logger.Debug($"Repo: Owner='{owner}' Name='{name}' Url='{url}'");
+                var repo = new Repo(repoDir, owner, name);
+                repo.GetCurrentSaved();
+                return repo;
+            }
         }
 
         private static T DeserializeWithErrorHandling<T>(string content)
