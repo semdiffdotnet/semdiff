@@ -17,7 +17,7 @@ namespace SemDiff.Test
                 Directory.Delete(curlyPath, true);
             }
             var repo = Repository.Clone("https://github.com/semdiffdotnet/curly-broccoli.git", curlyPath);
-            CurlyBroccoli = Repo.RepoFromConfig(curlyPath, Path.Combine(curlyPath, ".git", "config"));
+            CurlyBroccoli = Repo.GetRepoFor(repo);
 
             if (!string.IsNullOrWhiteSpace(checkoutBranch))
             {

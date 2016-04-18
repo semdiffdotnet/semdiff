@@ -29,7 +29,9 @@ namespace SemDiff.Test
             CloneCurlyBrocoli(checkoutBranch: "false_negative_a");
 
             //'Local' False Negative A (Inherited Logger and Extended Functionality) #3
-            //These files are in the cloned directory!
+            //These files are in the cloned directory, but a change needs to be created to trigger analysis!
+            var file = Path.Combine("curly", inheritedClass);
+            File.WriteAllText(file, "//Hello World!\r\n" + File.ReadAllText(file));
 
             //'Remote' False Negative B (Optimize Logger by not calling Log) #4
             remoteBase = Repo.GetPathInCache(CurlyBroccoli.CacheDirectory, 4, baseClass).ParseFile();
@@ -68,7 +70,7 @@ namespace SemDiff.Test
             });
 
             var res = Analysis.ForFalseNegative(CurlyBroccoli, model);
-            Assert.IsTrue(res.Any());
+            Assert.IsTrue(res.ToList().Any());
         }
     }
 }

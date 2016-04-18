@@ -19,7 +19,7 @@ namespace SemDiff.Core
         /// <param name="local">The syntax tree that will be compared with syntax trees from repo</param>
         public static IEnumerable<DetectedFalsePositive> ForFalsePositive(Repo repo, SyntaxTree local)
         {
-            var relativePath = GetRelativePath(repo.LocalDirectory, local.FilePath);
+            var relativePath = GetRelativePath(repo.LocalRepoDirectory, local.FilePath);
             var pulls = GetPulls(repo, relativePath);
             foreach (var pull in pulls)
             {
@@ -67,9 +67,12 @@ namespace SemDiff.Core
         /// <param name="repo">Repo that has the remote changes that need to be checked</param>
         /// <param name="semanticModel">the semantic model that will be used to find the base class</param>
         public static IEnumerable<DetectedFalseNegative> ForFalseNegative(Repo repo,
-                                                                        SemanticModel semanticModel)
+                                                    SemanticModel semanticModel)
         {
-            //TODO: Check if local file has been edited before proceeding!
+            if (!repo.FileChangedLocally(semanticModel.SyntaxTree.FilePath))
+            {
+                yield break;
+            }
 
             var bases = GetBaseClasses(semanticModel);
 
@@ -77,7 +80,7 @@ namespace SemDiff.Core
             {
                 foreach (var b in bt.Bases) //Partial classes could span multiple files
                 {
-                    var relativePath = GetRelativePath(repo.LocalDirectory, b.SyntaxTree.FilePath);
+                    var relativePath = GetRelativePath(repo.LocalRepoDirectory, b.SyntaxTree.FilePath);
                     var pulls = GetPulls(repo, relativePath);
 
                     foreach (var p in pulls)
