@@ -1,4 +1,6 @@
-﻿namespace SemDiff.Test.Configuration
+// Copyright (c) 2015 semdiffdotnet. Distributed under the MIT License.
+// See LICENSE file or opensource.org/licenses/MIT.
+namespace SemDiff.Test.Configuration
 {
     using System.Configuration;
 
