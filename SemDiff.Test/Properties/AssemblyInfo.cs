@@ -1,4 +1,6 @@
-﻿using System.Reflection;
+// Copyright (c) 2015 semdiffdotnet. Distributed under the MIT License.
+// See LICENSE file or opensource.org/licenses/MIT.
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following

@@ -1,4 +1,6 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+// Copyright (c) 2015 semdiffdotnet. Distributed under the MIT License.
+// See LICENSE file or opensource.org/licenses/MIT.
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SemDiff.Core;
 
 namespace SemDiff.Test

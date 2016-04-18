@@ -1,4 +1,6 @@
-﻿namespace SemDiff.Core
+// Copyright (c) 2015 semdiffdotnet. Distributed under the MIT License.
+// See LICENSE file or opensource.org/licenses/MIT.
+namespace SemDiff.Core
 {
     /// <summary>
     /// A wrapper around Diff that adds a property that contains if the Diff was from comparing the
