@@ -2,12 +2,10 @@
 // See LICENSE file or opensource.org/licenses/MIT.
 using LibGit2Sharp;
 using Newtonsoft.Json;
-using SemDiff.Core.Configuration;
 using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -26,9 +24,6 @@ namespace SemDiff.Core
     /// </summary>
     public class Repo
     {
-        internal static readonly GitHubConfiguration gitHubConfig =
-            new GitHubConfiguration((AuthenticationSection)ConfigurationManager.GetSection("SemDiff.Core/authentication"));
-
         private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)");
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         private static readonly Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
@@ -54,6 +49,11 @@ namespace SemDiff.Core
                 AuthToken = authToken;
                 Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
             }
+            else
+            {
+                GetAuthentication();
+            }
+            
         }
 
         #region Move to config object
@@ -72,13 +72,45 @@ namespace SemDiff.Core
         public string LocalGitDirectory { get; }
         public string LocalRepoDirectory => Path.GetDirectoryName(Path.GetDirectoryName(LocalGitDirectory));
         public string Owner { get; set; }
+        public LineEndingType LineEndings { get; set; }
         public List<PullRequest> PullRequests { get; } = new List<PullRequest>();
         public string RepoName { get; set; }
 
         public int RequestsLimit { get; private set; }
 
         public int RequestsRemaining { get; private set; }
-
+        /// <summary>
+        /// If the authentication file exists, it reads in the data.
+        /// If the authentication file doesn't exist, it creates a blank copy.
+        /// </summary>
+        /// <param name="path">Location of the authenication file</param>
+        public void GetAuthentication()
+        {
+            var path = Path.Combine(LocalGitDirectory, "Authentication.json");
+            if (File.Exists(path))
+            {
+                var json = File.ReadAllText(path);
+                try
+                {
+                    var auth = JsonConvert.DeserializeObject<Authentication>(json);
+                    AuthUsername = auth.Username;
+                    AuthToken = auth.AuthToken;
+                    LineEndings = auth.LineEnding;
+                    Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
+                }
+                catch (Exception ex)
+                {
+                    //Directory.Delete(CacheDirectory); This may be a good idea with a few more checks
+                    Logger.Error($"{ex.GetType().Name}: Couldn't deserialize {path} because {ex.Message}");
+                }
+                
+            }
+            else
+            {
+                var newAuth = new Authentication();
+                File.WriteAllText(path,JsonConvert.SerializeObject(newAuth,Formatting.Indented));
+            }
+        }
         /// <summary>
         /// Looks for the git repo above the current file in the directory hierarchy. Null will be returned if no repo was found.
         /// </summary>

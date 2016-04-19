@@ -133,8 +133,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Configuration\AuthenticationElement.cs" />
-    <Compile Include="Configuration\AuthenticationSection.cs" />
+    <Compile Include="Authentication.cs" />
     <Compile Include="Analysis.cs" />
     <Compile Include="DataStore.cs" />
     <Compile Include="DetectedFalseNegative.cs" />
@@ -143,7 +142,6 @@
     <Compile Include="Diff3Result.cs" />
     <Compile Include="Exceptions\GitHubUnknownErrorException.cs" />
     <Compile Include="Exceptions\GitHubAuthenticationFailureException.cs" />
-    <Compile Include="GitHubConfiguration.cs" />
     <Compile Include="Exceptions\GitHubRateLimitExceededException.cs" />
     <Compile Include="Exceptions\GitHubDeserializationException.cs" />
     <Compile Include="Exceptions\GitHubUrlNotFoundException.cs" />
