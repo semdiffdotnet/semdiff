@@ -13,7 +13,7 @@ namespace SemDiff.Test
     {
         private string owner = "semdiffdotnet";
         private string repository = "curly-broccoli";
-        private const string authUsername = "\"haroldhues\"";
+        private const string authUsername = "haroldhues";
         private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
         private Repo github;
 

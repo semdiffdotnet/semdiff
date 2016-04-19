@@ -15,8 +15,8 @@ namespace SemDiff.Core
     }
     public enum LineEndingType
     {
-        lf,
-        crlf
+        crlf,
+        lf
     }
     public class LineEndingTypeEnumConverter : JsonConverter
     {
