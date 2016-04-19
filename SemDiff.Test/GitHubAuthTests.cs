@@ -19,14 +19,14 @@ namespace SemDiff.Test
 
         public GitHubAuthTest()
         {
-            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
             github = new Repo(repoLoc, owner, repository);
         }
 
         [TestInitialize]
         public void TestInit()
         {
-            var path = Path.Combine(github.LocalGitDirectory, "Authentication.json");
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), "Authentication.json");
             File.Delete(path);
             var auth = new Authentication();
             auth.AuthToken = authToken;
@@ -40,7 +40,7 @@ namespace SemDiff.Test
         {
             github.GetAuthentication();
             await github.UpdateLimitAsync();
-            var path = Path.Combine(github.LocalGitDirectory, "Authentication.json");
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), "Authentication.json");
             File.Delete(path);
             Assert.IsTrue(github.RequestsLimit > 60);
         }

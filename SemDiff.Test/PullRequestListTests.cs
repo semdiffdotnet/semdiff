@@ -22,10 +22,10 @@ namespace SemDiff.Test
         [TestInitialize]
         public void TestInit()
         {
-            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
+            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
             github = new Repo(repoLoc, owner, repository, authUsername, authToken);
             github.UpdateLimitAsync().Wait();
-            var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff));
+            var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
             if (new FileInfo(appDataFolder).Exists)
                 Directory.Delete(appDataFolder, recursive: true);
         }
@@ -197,7 +197,7 @@ namespace SemDiff.Test
         {
             var requests = github.GetPullRequestsAsync().Result;
             github.UpdateLocalSavedList();
-            var newgithub = new Repo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), nameof(SemDiff)), owner, repository);
+            var newgithub = new Repo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff)), owner, repository);
             newgithub.GetCurrentSaved();
             Assert.IsNotNull(newgithub.PullRequests);
         }
