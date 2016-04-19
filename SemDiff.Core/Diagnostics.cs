@@ -1,4 +1,6 @@
-﻿using Microsoft.CodeAnalysis;
+// Copyright (c) 2015 semdiffdotnet. Distributed under the MIT License.
+// See LICENSE file or opensource.org/licenses/MIT.
+using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
 
 namespace SemDiff.Core
@@ -39,7 +41,7 @@ namespace SemDiff.Core
 
         public const string InternalErrorDiagnosticId = nameof(SemDiff);
 
-        private const string InternalErrorMessageFormat = "SemDiff Error: {0}";
+        private const string InternalErrorMessageFormat = "SemDiff Error - {0}";
 
         private const string InternalErrorTitle = "SemDiff Internal Error";
 

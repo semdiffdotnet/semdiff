@@ -1,4 +1,6 @@
-﻿using LibGit2Sharp;
+// Copyright (c) 2015 semdiffdotnet. Distributed under the MIT License.
+// See LICENSE file or opensource.org/licenses/MIT.
+using LibGit2Sharp;
 using SemDiff.Core;
 using System.IO;
 
@@ -17,7 +19,7 @@ namespace SemDiff.Test
                 Directory.Delete(curlyPath, true);
             }
             var repo = Repository.Clone("https://github.com/semdiffdotnet/curly-broccoli.git", curlyPath);
-            CurlyBroccoli = Repo.RepoFromConfig(curlyPath, Path.Combine(curlyPath, ".git", "config"));
+            CurlyBroccoli = Repo.GetRepoFor(repo);
 
             if (!string.IsNullOrWhiteSpace(checkoutBranch))
             {

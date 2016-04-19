@@ -1,10 +1,16 @@
-﻿using Microsoft.CodeAnalysis;
+// Copyright (c) 2015 semdiffdotnet. Distributed under the MIT License.
+// See LICENSE file or opensource.org/licenses/MIT.
+using LibGit2Sharp;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using SemDiff.Core.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SemDiff.Core
@@ -24,11 +30,43 @@ namespace SemDiff.Core
         /// <param name="context">object that allows the assignment of callbacks</param>
         public override void Initialize(AnalysisContext context)
         {
+            SetupLibGit2Sharp();
 #if DEBUG
             Logger.AddHooks(Logger.LogToFile($@"C:\Users\Public\Documents\semdiff_logs_{Guid.NewGuid()}.txt"));
             Logger.Suppress(Logger.Severities.Trace);
 #endif
             context.RegisterCompilationAction(OnCompilation);
+        }
+
+        private int libGit2SharpNativePathSet;
+
+        private void SetupLibGit2Sharp()
+        {
+            // It is important to only set the native library path before they are accessed for the first time.
+            // Otherwise exceptions will be thrown. So this code is only executed once.
+            if (Interlocked.Exchange(ref libGit2SharpNativePathSet, 1) == 0)
+            {
+                if (Platform.OperatingSystem != OperatingSystemType.Windows)
+                {
+                    if (Directory.Exists(GlobalSettings.NativeLibraryPath))
+                        return; //We are likely debugging, no change needed
+
+                    //"C:\Users\crhoe\.nuget\packages\SemDiff\0.6.0-rc1\analyzers\dotnet\cs\SemDiff.Core.dll"
+                    var semdiffPath = new Uri(Assembly.GetExecutingAssembly().EscapedCodeBase).LocalPath;
+
+                    var csdir = Path.GetDirectoryName(semdiffPath);
+                    var dotnetdir = Path.GetDirectoryName(csdir);
+                    var analyzersdir = Path.GetDirectoryName(dotnetdir);
+                    var packagedir = Path.GetDirectoryName(analyzersdir);
+                    //these are placed in a nested directory to avoid possible name conflicts in the future
+                    var libgit2sharpresources = Path.Combine(packagedir, "libgit2sharpresources");
+
+                    GlobalSettings.NativeLibraryPath = Path.Combine(libgit2sharpresources, "NativeBinaries");
+
+                    if (!Directory.Exists(GlobalSettings.NativeLibraryPath))
+                        throw new NotImplementedException(nameof(LibGit2Sharp) + " native libraries could not be found");
+                }
+            }
         }
 
         private static void OnCompilation(CompilationAnalysisContext context)
