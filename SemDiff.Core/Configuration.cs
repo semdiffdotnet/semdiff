@@ -5,7 +5,7 @@ using System;
 
 namespace SemDiff.Core
 {
-    class Authentication
+    class Configuration
     {
         [JsonProperty("username")]
         public string Username { get; set; }

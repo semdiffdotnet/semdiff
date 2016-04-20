@@ -66,6 +66,7 @@ namespace SemDiff.Core
 
         public string CacheDirectory { get; set; }
         public string CachedLocalPullRequestListPath => Path.Combine(CacheDirectory, "LocalList.json");
+        public string ConfigFile { get; } = "User_Config.json";
         public HttpClient Client { get; private set; }
         public string EtagNoChanges { get; set; }
         public DateTime LastUpdate { get; internal set; } = DateTime.MinValue;
@@ -88,13 +89,13 @@ namespace SemDiff.Core
         {
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
             Directory.CreateDirectory(path);
-            path = Path.Combine(path, "Authentication.json");
+            path = Path.Combine(path, ConfigFile);
             if (File.Exists(path))
             {
                 var json = File.ReadAllText(path);
                 try
                 {
-                    var auth = JsonConvert.DeserializeObject<Authentication>(json);
+                    var auth = JsonConvert.DeserializeObject<Configuration>(json);
                     AuthUsername = auth.Username;
                     AuthToken = auth.AuthToken;
                     LineEndings = auth.LineEnding;
@@ -109,7 +110,7 @@ namespace SemDiff.Core
             }
             else
             {
-                var newAuth = new Authentication();
+                var newAuth = new Configuration();
                 File.WriteAllText(path,JsonConvert.SerializeObject(newAuth,Formatting.Indented));
             }
         }

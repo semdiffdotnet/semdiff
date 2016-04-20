@@ -25,9 +25,9 @@ namespace SemDiff.Test
         [TestInitialize]
         public void TestInit()
         {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), "Authentication.json");
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), github.ConfigFile);
             File.Delete(path);
-            var auth = new Authentication();
+            var auth = new Core.Configuration();
             auth.AuthToken = authToken;
             auth.Username = authUsername;
             var json = JsonConvert.SerializeObject(auth, Formatting.Indented);
@@ -39,7 +39,7 @@ namespace SemDiff.Test
         {
             github.GetAuthentication();
             await github.UpdateLimitAsync();
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), "Authentication.json");
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), github.ConfigFile);
             File.Delete(path);
             Assert.IsTrue(github.RequestsLimit > 60);
         }
@@ -48,7 +48,7 @@ namespace SemDiff.Test
             var path = Path.Combine(github.CacheDirectory, "test.json");
             File.WriteAllText(path, fileData);
             var json = File.ReadAllText(path);
-            var auth = JsonConvert.DeserializeObject<Authentication>(json);
+            var auth = JsonConvert.DeserializeObject<Core.Configuration>(json);
             File.Delete(path);
             Assert.IsTrue(auth.LineEnding == ending);
         }
