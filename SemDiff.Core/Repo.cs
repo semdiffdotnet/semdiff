@@ -86,8 +86,9 @@ namespace SemDiff.Core
         /// <param name="path">Location of the authenication file</param>
         public void GetAuthentication()
         {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), "Authentication.json");
-            Console.Write(LocalGitDirectory);
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
+            Directory.CreateDirectory(path);
+            path = Path.Combine(path, "Authentication.json");
             if (File.Exists(path))
             {
                 var json = File.ReadAllText(path);
