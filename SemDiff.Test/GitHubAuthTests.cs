@@ -1,11 +1,9 @@
-// Copyright (c) 2015 semdiffdotnet. Distributed under the MIT License.
-// See LICENSE file or opensource.org/licenses/MIT.
 namespace SemDiff.Test
 {
     using Core;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
+    using Newtonsoft.Json;
     using System;
-    using System.Collections.Generic;
     using System.IO;
     using System.Threading.Tasks;
 
@@ -16,27 +14,68 @@ namespace SemDiff.Test
         private string repository = "curly-broccoli";
         private const string authUsername = "haroldhues";
         private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
-
-        private IList<PullRequest> pullRequests;
         private Repo github;
 
         public GitHubAuthTest()
         {
-            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData));
-            github = new Repo(repoLoc, owner, repository, authUsername, authToken);
+            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            github = new Repo(repoLoc, owner, repository);
+        }
+
+        [TestInitialize]
+        public void TestInit()
+        {
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), github.ConfigFile);
+            File.Delete(path);
+            var auth = new Core.Configuration();
+            auth.AuthToken = authToken;
+            auth.Username = authUsername;
+            var json = JsonConvert.SerializeObject(auth, Formatting.Indented);
+            File.WriteAllText(path, json);
         }
 
         [TestMethod]
         public async Task AuthorizedPullRequests()
         {
-            try
-            {
-                pullRequests = await github.GetPullRequestsAsync();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                Assert.Inconclusive("Try adding your credetials to the AppConfig :)");
-            }
+            github.GetAuthentication();
+            await github.UpdateLimitAsync();
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), github.ConfigFile);
+            File.Delete(path);
+            Assert.IsTrue(github.RequestsLimit > 60);
+        }
+        private void LineEndingTest(string fileData, LineEndingType ending)
+        {
+            var path = Path.Combine(github.CacheDirectory, "test.json");
+            File.WriteAllText(path, fileData);
+            var json = File.ReadAllText(path);
+            var auth = JsonConvert.DeserializeObject<Core.Configuration>(json);
+            File.Delete(path);
+            Assert.IsTrue(auth.LineEnding == ending);
+        }
+        [TestMethod]
+        public void TestInvalidLineEnding()
+        {
+            LineEndingTest("{\n   \"username\": null,\n   \"authtoken\": null,\n   \"line_ending\": \"lfsadf\"\n}", LineEndingType.crlf);
+        }
+        [TestMethod]
+        public void TestlfLineEnding()
+        {
+            //upper case
+            LineEndingTest("{\n   \"username\": null,\n   \"authtoken\": null,\n   \"line_ending\": \"LF\"\n}", LineEndingType.lf);
+            //lower case
+            LineEndingTest("{\n   \"username\": null,\n   \"authtoken\": null,\n   \"line_ending\": \"lf\"\n}", LineEndingType.lf);
+            //mixed case
+            LineEndingTest("{\n   \"username\": null,\n   \"authtoken\": null,\n   \"line_ending\": \"Lf\"\n}", LineEndingType.lf);
+        }
+        [TestMethod]
+        public void TestcrlfLineEnding()
+        {
+            //upper case
+            LineEndingTest("{\n   \"username\": null,\n   \"authtoken\": null,\n   \"line_ending\": \"CRLF\"\n}", LineEndingType.crlf);
+            //lower case
+            LineEndingTest("{\n   \"username\": null,\n   \"authtoken\": null,\n   \"line_ending\": \"crlf\"\n}", LineEndingType.crlf);
+            //mixed case
+            LineEndingTest("{\n   \"username\": null,\n   \"authtoken\": null,\n   \"line_ending\": \"cRlF\"\n}", LineEndingType.crlf);
         }
     }
 }
