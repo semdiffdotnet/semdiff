@@ -53,7 +53,6 @@ namespace SemDiff.Core
             {
                 GetAuthentication();
             }
-            
         }
 
         #region Move to config object
@@ -80,11 +79,11 @@ namespace SemDiff.Core
         public int RequestsLimit { get; private set; }
 
         public int RequestsRemaining { get; private set; }
+
         /// <summary>
         /// If the authentication file exists, it reads in the data.
         /// If the authentication file doesn't exist, it creates a blank copy.
         /// </summary>
-        /// <param name="path">Location of the authenication file</param>
         public void GetAuthentication()
         {
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
@@ -106,14 +105,14 @@ namespace SemDiff.Core
                     //Directory.Delete(CacheDirectory); This may be a good idea with a few more checks
                     Logger.Error($"{ex.GetType().Name}: Couldn't deserialize {path} because {ex.Message}");
                 }
-                
             }
             else
             {
                 var newAuth = new Configuration();
-                File.WriteAllText(path,JsonConvert.SerializeObject(newAuth,Formatting.Indented));
+                File.WriteAllText(path, JsonConvert.SerializeObject(newAuth, Formatting.Indented));
             }
         }
+
         /// <summary>
         /// Looks for the git repo above the current file in the directory hierarchy. Null will be returned if no repo was found.
         /// </summary>

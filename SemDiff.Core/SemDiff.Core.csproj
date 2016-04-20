@@ -133,8 +133,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Authentication.cs" />
     <Compile Include="Analysis.cs" />
+    <Compile Include="Configuration.cs" />
     <Compile Include="DataStore.cs" />
     <Compile Include="DetectedFalseNegative.cs" />
     <Compile Include="DetectedFalsePositive.cs" />
