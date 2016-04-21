@@ -227,5 +227,17 @@ namespace SemDiff.Test
             }
             Assert.IsTrue(fileLastUpdated == File.GetLastWriteTimeUtc(path));
         }
+
+        [TestMethod]
+        public void DownloadLineEndingsTest()
+        {
+            var requests = github.GetPullRequestsAsync().Result;
+            Assert.IsTrue(github.LineEndings == LineEndingType.crlf);
+            foreach (var r in requests)
+            {
+                r.GetFilesAsync().Wait();
+                Assert.IsTrue(r.Files.All(f => f.BaseTree.ToString().Contains("\r\n") && f.HeadTree.ToString().Contains("\r\n")));
+            }
+        }
     }
 }
