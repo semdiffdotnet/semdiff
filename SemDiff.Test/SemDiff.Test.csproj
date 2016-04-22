@@ -140,6 +140,7 @@
     <Compile Include="DiffTests.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="GitHubAuthTests.cs" />
+    <Compile Include="GitIgnoreTests.cs" />
     <Compile Include="LoggerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="PullRequestListTests.cs" />
