@@ -8,7 +8,7 @@
     <authors>https://github.com/orgs/semdiffdotnet/people</authors>
     <licenseUrl>https://opensource.org/licenses/MIT</licenseUrl>
     <projectUrl>https://github.com/semdiffdotnet/semdiff</projectUrl>
-    <!--<iconUrl>https://avatars.githubusercontent.com/u/15133594</iconUrl>-->
+    <iconUrl>https://raw.githubusercontent.com/wiki/semdiffdotnet/semdiff/Logo.png</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>
       Tool which can diff C# code semantically, rather than simply by the program's text.
