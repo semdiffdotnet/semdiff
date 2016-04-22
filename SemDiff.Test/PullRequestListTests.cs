@@ -19,6 +19,20 @@ namespace SemDiff.Test
         private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
         public static Repo github;
 
+        [ClassInitialize]
+        public void ClassInit()
+        {
+            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            github = new Repo(repoLoc, owner, repository);
+            Directory.CreateDirectory(github.CacheDirectory);
+            var path = Path.Combine(github.CacheDirectory, github.ConfigFile);
+            var config = new Core.Configuration();
+            config.Username = authUsername;
+            config.AuthToken = authToken;
+            File.WriteAllText(path, JsonConvert.SerializeObject(config, Formatting.Indented));
+            github.GetAuthentication();
+        }
+
         [TestInitialize]
         public void TestInit()
         {
