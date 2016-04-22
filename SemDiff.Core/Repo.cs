@@ -24,6 +24,7 @@ namespace SemDiff.Core
     /// </summary>
     public class Repo
     {
+        private static readonly Regex cacheFolder = new Regex(@"^\.semdiff\/$");
         private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)");
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         private static readonly Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
@@ -41,7 +42,7 @@ namespace SemDiff.Core
             };
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-            CacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName);
+            CacheDirectory = Path.Combine(LocalRepoDirectory,".semdiff");
 
             if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
             {
@@ -53,6 +54,7 @@ namespace SemDiff.Core
             {
                 GetAuthentication();
             }
+            UpdateGitIgnore();
         }
 
         #region Move to config object
@@ -111,6 +113,42 @@ namespace SemDiff.Core
                 var newAuth = new Configuration();
                 File.WriteAllText(path, JsonConvert.SerializeObject(newAuth, Formatting.Indented));
             }
+        }
+
+        public void UpdateGitIgnore()
+        {
+            var GitIgnore = Path.Combine(LocalRepoDirectory, ".gitignore");
+            var input = "";
+            if (File.Exists(GitIgnore))
+            {
+                input = File.ReadAllText(GitIgnore);
+            }
+            var UpdateGitIgnore = true;
+            var lines = input.Split(new string[] { Environment.NewLine}, StringSplitOptions.None);
+            var builder = new StringBuilder();
+            foreach (var line in lines)
+            {
+                if (cacheFolder.Match(line).Success)
+                {
+                    UpdateGitIgnore = false;
+                }
+            }
+            if (UpdateGitIgnore)
+            {
+                builder.Append(input);
+                if (input != "")
+                {
+                    builder.Append(Environment.NewLine);
+                }
+                string[] GitIgnoreAddition = { @"#The Semdiff cache folder", ".semdiff/" };
+                foreach (var line in GitIgnoreAddition)
+                {
+                    builder.Append(line);
+                    builder.Append(Environment.NewLine);
+                }
+                File.WriteAllText(GitIgnore, builder.ToString());
+            }
+
         }
 
         /// <summary>
