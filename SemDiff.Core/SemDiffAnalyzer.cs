@@ -60,7 +60,6 @@ namespace SemDiff.Core
                     var packagedir = Path.GetDirectoryName(analyzersdir);
                     //these are placed in a nested directory to avoid possible name conflicts in the future
                     var libgit2sharpresources = Path.Combine(packagedir, "libgit2sharpresources");
-
                     GlobalSettings.NativeLibraryPath = Path.Combine(libgit2sharpresources, "NativeBinaries");
 
                     if (!Directory.Exists(GlobalSettings.NativeLibraryPath))

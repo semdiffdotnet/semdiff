@@ -2,6 +2,8 @@
 // See LICENSE file or opensource.org/licenses/MIT.
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using SemDiff.Core;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -56,5 +58,16 @@ namespace SemDiff.Test
         }
 
         public static string BlankLines(this int num) => string.Join("", Enumerable.Range(0, num).Select(o => Environment.NewLine));
+
+        public static void AssertRateLimit(this Repo repo)
+        {
+            repo.UpdateLimitAsync().Wait();
+            var limit = repo.RequestsLimit;
+            var remaining = repo.RequestsRemaining;
+            if ((float)remaining / limit < 0.1)
+            {
+                Assert.Inconclusive("There are less than 10% of requests remaining before the rate limit is hit");
+            }
+        }
     }
 }
