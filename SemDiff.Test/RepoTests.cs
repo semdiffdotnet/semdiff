@@ -32,6 +32,13 @@ namespace SemDiff.Test
         [TestMethod]
         public void RepoGetChangedFiles()
         {
+            CurlyBroccoli.UpdateLimitAsync().Wait();
+            var limit = CurlyBroccoli.RequestsLimit;
+            var remaining = CurlyBroccoli.RequestsRemaining;
+            if ((float)remaining / limit < 0.1)
+            {
+                Assert.Inconclusive("There are less than 10% of requests remaining before the rate limit is hit");
+            }
             CurlyBroccoli.UpdateRemoteChangesAsync().Wait();
             var pulls = CurlyBroccoli.PullRequests.ToList();
             Assert.AreEqual(5, pulls.Count);
