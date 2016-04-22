@@ -51,7 +51,7 @@ namespace SemDiff.Core
             }
             else
             {
-                GetAuthentication();
+                GetConfiguration();
             }
         }
 
@@ -84,7 +84,7 @@ namespace SemDiff.Core
         /// If the authentication file exists, it reads in the data.
         /// If the authentication file doesn't exist, it creates a blank copy.
         /// </summary>
-        public void GetAuthentication()
+        public void GetConfiguration()
         {
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
             Directory.CreateDirectory(path);

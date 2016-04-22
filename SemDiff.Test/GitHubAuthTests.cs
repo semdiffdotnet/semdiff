@@ -37,7 +37,7 @@ namespace SemDiff.Test
         [TestMethod]
         public async Task AuthorizedPullRequests()
         {
-            github.GetAuthentication();
+            github.GetConfiguration();
             await github.UpdateLimitAsync();
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), github.ConfigFile);
             File.Delete(path);
