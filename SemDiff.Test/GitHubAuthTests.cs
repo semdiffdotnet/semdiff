@@ -18,7 +18,8 @@ namespace SemDiff.Test
 
         public GitHubAuthTest()
         {
-            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff),"semdiffdotnet", repository);
+            Directory.CreateDirectory(repoLoc);
             github = new Repo(repoLoc, owner, repository);
         }
 
@@ -26,6 +27,7 @@ namespace SemDiff.Test
         public void TestInit()
         {
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), github.ConfigFile);
+            Directory.CreateDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff)));
             File.Delete(path);
             var auth = new Core.Configuration();
             auth.AuthToken = authToken;

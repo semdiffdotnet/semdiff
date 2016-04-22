@@ -22,7 +22,7 @@ namespace SemDiff.Test
         [TestInitialize]
         public void TestInit()
         {
-            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
+            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),nameof(SemDiff),"semdiffdotnet",repository);
             github = new Repo(repoLoc, owner, repository, authUsername, authToken);
             github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
@@ -123,8 +123,7 @@ namespace SemDiff.Test
                     var dir = "";
                     var f = r.Files.Last();
                     directoryTokens = f.Filename.Split('/');
-                    dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "/SemDiff/semdiffdotnet/curly-broccoli/".ToLocalPath();
-
+                    dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "/SemDiff/.semdiff".ToLocalPath();
                     dir = Path.Combine(dir, r.Number.ToString(), f.Filename.ToLocalPath());
                     var text = File.ReadAllText(dir);
                     foreach (var line in File.ReadAllLines(dir))
