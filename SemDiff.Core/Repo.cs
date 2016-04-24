@@ -143,22 +143,27 @@ namespace SemDiff.Core
                 var json = File.ReadAllText(CachedLocalPullRequestListPath);
                 var list = JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json);
                 PullRequests.Clear();
-                //Restore Self-Referential Loops
                 foreach (var p in list)
                 {
+                    //Restore Self-Referential Loops
+                    p.ParentRepo = this;
+                    foreach (var r in p.Files)
+                    {
+                        r.ParentPullRequst = p;
+                    }
+
                     if (VerifyPullRequestCache(p))
                     {
-                        p.ParentRepo = this;
                         PullRequests.Add(p);
                         foreach (var r in p.Files)
                         {
-                            r.ParentPullRequst = p;
                             r.LoadFromCache();
                         }
                     }
                     else
                     {
-                        Directory.Delete(p.CacheDirectory, true);
+                        if (Directory.Exists(p.CacheDirectory))
+                            Directory.Delete(p.CacheDirectory, true);
                     }
                 }
 
