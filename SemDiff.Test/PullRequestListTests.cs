@@ -40,10 +40,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void PullRequestFromTestRepo()
         {
-            if (github.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
+            github.AssertRateLimit();
             var requests = github.GetPullRequestsAsync().Result;
             Assert.AreEqual(5, requests.Count);
             var r = requests.ElementAt(requests.Count - 4);
@@ -66,10 +63,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void EtagNotModified()
         {
-            if (github.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
+            github.AssertRateLimit();
             var requests = github.GetPullRequestsAsync().Result;
             requests = github.GetPullRequestsAsync().Result;
             Assert.AreEqual(null, requests);
@@ -78,10 +72,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void Pagination()
         {
-            if (github.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
+            github.AssertRateLimit();
             github.Owner = "dotnet";
             github.RepoName = "roslyn";
             var roslynPRs = github.GetPullRequestsAsync().Result;
@@ -91,10 +82,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void FilesPagination()
         {
-            if (github.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
+            github.AssertRateLimit();
             github.Owner = "semdiffdotnet";
             github.RepoName = "50states";
             var PRs = github.GetPullRequestsAsync().Result;
@@ -106,10 +94,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void GetFilesFromGitHub()
         {
-            if (github.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
+            github.AssertRateLimit();
             var requests = github.GetPullRequestsAsync().Result;
             var fourWasFound = false;
             foreach (var r in requests)
@@ -150,6 +135,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void UpdateLocalSaved()
         {
+            github.AssertRateLimit();
             github.GetPullRequestsAsync().Wait();
             var path = github.CacheDirectory.Replace('/', Path.DirectorySeparatorChar);
             path = Path.Combine(path, github.CachedLocalPullRequestListPath);
@@ -177,6 +163,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void RemoveUnusedLocalFiles()
         {
+            github.AssertRateLimit();
             var requests = github.GetPullRequestsAsync().Result;
             var zeroDir = Path.Combine(github.CacheDirectory.Replace('/', Path.DirectorySeparatorChar), "0");
             Directory.CreateDirectory(zeroDir);
@@ -195,6 +182,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void LastSessionLocalFiles()
         {
+            github.AssertRateLimit();
             var requests = github.GetPullRequestsAsync().Result;
             github.UpdateLocalSavedList();
             var newgithub = new Repo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff)), owner, repository);
@@ -205,6 +193,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void NoUnnecessaryDownloading()
         {
+            github.AssertRateLimit();
             var requests = github.GetPullRequestsAsync().Result;
             var path = "";
             foreach (var r in requests)
