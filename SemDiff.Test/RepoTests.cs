@@ -25,7 +25,7 @@ namespace SemDiff.Test
         {
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
             var gitFolder = Path.Combine(appDataFolder, ".git");
-            repo = new Repo(gitFolder, owner, repository, authUsername, authToken);
+            repo = new Repo(gitFolder, owner, repository);
             repo.UpdateLimitAsync().Wait();
             if (new FileInfo(appDataFolder).Exists)
                 Directory.Delete(appDataFolder, recursive: true);
@@ -192,7 +192,7 @@ namespace SemDiff.Test
             repo.AssertRateLimit();
             var requests = repo.GetPullRequestsAsync().Result;
             repo.UpdateLocalSavedList();
-            var newRepo = new Repo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff)), owner, repository);
+            var newRepo = new Repo(repo.LocalGitDirectory, repo.Owner, repo.RepoName);
             newRepo.GetCurrentSaved();
             Assert.IsNotNull(newRepo.PullRequests);
         }
