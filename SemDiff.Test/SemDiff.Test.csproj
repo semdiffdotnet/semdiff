@@ -142,9 +142,8 @@
     <Compile Include="GitHubAuthTests.cs" />
     <Compile Include="LoggerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="PullRequestListTests.cs" />
-    <Compile Include="Diff3Tests.cs" />
     <Compile Include="RepoTests.cs" />
+    <Compile Include="Diff3Tests.cs" />
     <Compile Include="FalsePositiveAnalysisTests.cs" />
     <Compile Include="TestBase.cs" />
     <Compile Include="FalseNegativeAnalysisTests.cs" />
