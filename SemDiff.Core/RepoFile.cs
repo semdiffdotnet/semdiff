@@ -65,6 +65,19 @@ namespace SemDiff.Core
             var baseText = text[0];
             var headText = text[1];
 
+            if (ParentRepo.LineEndings == LineEndingType.crlf)
+            {
+                //Area for speed improvement
+                baseText = baseText.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n");
+                headText = headText.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n");
+            }
+            else
+            {
+                //Area for speed improvement
+                baseText = baseText.Replace("\r\n", "\n").Replace("\r", "\n");
+                headText = headText.Replace("\r\n", "\n").Replace("\r", "\n");
+            }
+
             BaseTree = CSharpSyntaxTree.ParseText(baseText);
             HeadTree = CSharpSyntaxTree.ParseText(headText);
 
