@@ -26,10 +26,10 @@ namespace SemDiff.Test
             Assert.AreEqual(5, pulls.Count);
             foreach (var p in pulls)
             {
-                Assert.IsNotNull(p.Files);
+                Assert.IsNotNull(p.ValidFiles);
                 Assert.IsNotNull(p.Title);
                 Assert.AreNotEqual(default(DateTime), p.Updated);
-                foreach (var f in p.Files)
+                foreach (var f in p.ValidFiles)
                 {
                     Assert.IsNotNull(f.BaseTree);
                     Assert.IsNotNull(f.HeadTree);
