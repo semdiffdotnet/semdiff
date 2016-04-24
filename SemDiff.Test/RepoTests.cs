@@ -48,8 +48,8 @@ namespace SemDiff.Test
             if (r.Number == 4)
             {
                 Assert.AreEqual(r.State, "open");
-                Assert.AreEqual(r.Files.Count, 1);
-                foreach (var f in r.Files)
+                Assert.AreEqual(r.ValidFiles.Count(), 1);
+                foreach (var f in r.ValidFiles)
                 {
                     Assert.AreEqual("Curly-Broccoli/Curly/Logger.cs", f.Filename);
                 }
@@ -89,7 +89,7 @@ namespace SemDiff.Test
             var PRs = repo.GetPullRequestsAsync().Result;
             Assert.AreEqual(1, PRs.Count);
             var pr = PRs.First();
-            Assert.AreEqual(84, pr.Files.Count);
+            Assert.AreEqual(84, pr.ValidFiles.Count());
         }
 
         [TestMethod]
@@ -107,7 +107,7 @@ namespace SemDiff.Test
                     var counter = 0;
                     string[] directoryTokens;
                     var dir = "";
-                    var f = r.Files.Last();
+                    var f = r.ValidFiles.Last();
                     directoryTokens = f.Filename.Split('/');
                     dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "/SemDiff/semdiffdotnet/curly-broccoli/".ToLocalPath();
 
@@ -159,6 +159,7 @@ namespace SemDiff.Test
             Assert.IsNotNull(local.Head);
             Assert.IsNotNull(local.Base);
             Assert.IsNotNull(local.Files);
+            Assert.IsNotNull(local.ValidFiles);
         }
 
         [TestMethod]
@@ -170,7 +171,7 @@ namespace SemDiff.Test
             var prZero = requests.OrderBy(p => p.Number).First().Clone();
             prZero.Number = 0;
             prZero.ParentRepo = repo;
-            foreach (var f in prZero.Files) //Add files to fool it!
+            foreach (var f in prZero.ValidFiles) //Add files to fool it!
             {
                 f.ParentPullRequst = prZero;
                 new FileInfo(f.CachePathBase).Directory.Create();
@@ -208,7 +209,7 @@ namespace SemDiff.Test
                 r.GetFilesAsync().Wait();
                 if (r.Number == 1)
                 {
-                    foreach (var files in r.Files)
+                    foreach (var files in r.ValidFiles)
                     {
                         path = files.Filename.Replace('/', Path.DirectorySeparatorChar);
                     }

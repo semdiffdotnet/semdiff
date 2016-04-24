@@ -20,6 +20,10 @@ namespace SemDiff.Core
         public string CacheDirectory => Path.Combine(ParentRepo.CacheDirectory, Number.ToString());
 
         public IList<RepoFile> Files { get; set; }
+
+        [JsonIgnore]
+        public IEnumerable<RepoFile> ValidFiles => Files.Where(f => !f.IsInvalid);
+
         public HeadBase Head { get; set; }
         public DateTime LastWrite { get; set; } = DateTime.MinValue;
         public int Number { get; set; }
@@ -44,14 +48,14 @@ namespace SemDiff.Core
         {
             if (LastWrite >= Updated)
             {
-                foreach (var f in Files)
+                foreach (var f in ValidFiles)
                 {
                     f.LoadFromCache();
                 }
             }
             else
             {
-                await Task.WhenAll(Files.Select(current => current.DownloadFileAsync()));
+                await Task.WhenAll(ValidFiles.Select(current => current.DownloadFileAsync()));
                 LastWrite = DateTime.UtcNow;
             }
         }

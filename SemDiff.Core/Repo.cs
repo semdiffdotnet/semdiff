@@ -136,7 +136,7 @@ namespace SemDiff.Core
                 {
                     //Restore Self-Referential Loops
                     p.ParentRepo = this;
-                    foreach (var r in p.Files)
+                    foreach (var r in p.ValidFiles)
                     {
                         r.ParentPullRequst = p;
                     }
@@ -144,7 +144,7 @@ namespace SemDiff.Core
                     if (VerifyPullRequestCache(p))
                     {
                         PullRequests.Add(p);
-                        foreach (var r in p.Files)
+                        foreach (var r in p.ValidFiles)
                         {
                             r.LoadFromCache();
                         }
@@ -169,7 +169,7 @@ namespace SemDiff.Core
             if (!Directory.Exists(p.CacheDirectory))
                 return false;
 
-            foreach (var f in p.Files)
+            foreach (var f in p.ValidFiles)
             {
                 if (!File.Exists(f.CachePathBase))
                     return false;
@@ -375,7 +375,7 @@ namespace SemDiff.Core
             {
                 Client.DefaultRequestHeaders.IfNoneMatch.Add(EntityTagHeaderValue.Parse(etag.Value));
             }
-            var response = await Extensions.RetryOnceAsync(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
+            var response = await Client.GetAsync(url);
             IEnumerable<string> headerVal;
             if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
             {
@@ -391,13 +391,13 @@ namespace SemDiff.Core
                 {
                     case HttpStatusCode.Unauthorized:
                         var unauth = await response.Content.ReadAsStringAsync();
-                        var unauthorizedError = DeserializeWithErrorHandling<GitHubError>(unauth);
-                        Logger.Error($"{nameof(GitHubAuthenticationFailureException)}: {unauthorizedError.Message}");
+                        var unauthorizedError = DeserializeWithErrorHandling<GitHubError>(unauth, supress_error: true);
+                        Logger.Error($"{nameof(GitHubAuthenticationFailureException)}: {unauthorizedError?.Message ?? unauth}");
                         throw new GitHubAuthenticationFailureException();
                     case HttpStatusCode.Forbidden:
                         var forbid = await response.Content.ReadAsStringAsync();
-                        var forbidError = DeserializeWithErrorHandling<GitHubError>(forbid);
-                        Logger.Error($"{nameof(GitHubRateLimitExceededException)}: {forbidError.Message}");
+                        var forbidError = DeserializeWithErrorHandling<GitHubError>(forbid, supress_error: true);
+                        Logger.Error($"{nameof(GitHubRateLimitExceededException)}: {forbidError?.Message ?? forbid}");
                         throw new GitHubRateLimitExceededException();
                     case HttpStatusCode.NotModified:
                         //Returns null because we have nothing to update if nothing was modified
@@ -405,8 +405,10 @@ namespace SemDiff.Core
 
                     default:
                         var str = await response.Content.ReadAsStringAsync();
-                        var error = DeserializeWithErrorHandling<GitHubError>(str);
-                        throw error.ToException();
+                        if (str == "Not Found")
+                            throw new GitHubUnknownErrorException("Not Found");
+                        var error = DeserializeWithErrorHandling<GitHubError>(str, supress_error: true);
+                        throw error?.ToException() ?? new GitHubUnknownErrorException(str);
                 }
             }
             if (etag != null && response.Headers.TryGetValues("ETag", out headerVal))
@@ -448,7 +450,7 @@ namespace SemDiff.Core
             }
         }
 
-        private static T DeserializeWithErrorHandling<T>(string content)
+        private static T DeserializeWithErrorHandling<T>(string content, bool supress_error = false)
         {
             try
             {
@@ -457,7 +459,10 @@ namespace SemDiff.Core
             catch (Exception ex)
             {
                 Logger.Error($"{nameof(GitHubDeserializationException)}: {ex.Message}");
-                throw new GitHubDeserializationException(ex);
+                if (!supress_error)
+                    throw new GitHubDeserializationException(ex);
+                else
+                    return default(T);
             }
         }
 
