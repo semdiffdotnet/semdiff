@@ -166,9 +166,16 @@ namespace SemDiff.Test
             github.AssertRateLimit();
             var requests = github.GetPullRequestsAsync().Result;
             var zeroDir = Path.Combine(github.CacheDirectory.Replace('/', Path.DirectorySeparatorChar), "0");
-            Directory.CreateDirectory(zeroDir);
-            var prZero = requests.First().Clone();
+            var prZero = requests.OrderBy(p => p.Number).First().Clone();
             prZero.Number = 0;
+            prZero.ParentRepo = github;
+            foreach (var f in prZero.Files) //Add files to fool it!
+            {
+                f.ParentPullRequst = prZero;
+                new FileInfo(f.CachePathBase).Directory.Create();
+                File.WriteAllText(f.CachePathBase, "<BAD>");
+                File.WriteAllText(f.CachePathHead, "<BAD>");
+            }
             github.PullRequests.Add(prZero);
             var json = github.CachedLocalPullRequestListPath;
             File.WriteAllText(json, JsonConvert.SerializeObject(github.PullRequests));

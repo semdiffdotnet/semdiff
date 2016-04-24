@@ -136,32 +136,59 @@ namespace SemDiff.Core
             Debug.Assert(this != null);
             try
             {
-                var path = CachedLocalPullRequestListPath;
-                if (File.Exists(path))
+                if (!Directory.Exists(CacheDirectory))
+                    return;
+                if (!File.Exists(CachedLocalPullRequestListPath))
+                    return;
+                var json = File.ReadAllText(CachedLocalPullRequestListPath);
+                var list = JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json);
+                PullRequests.Clear();
+                foreach (var p in list)
                 {
-                    var json = File.ReadAllText(path);
-                    var list = JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json);
-
                     //Restore Self-Referential Loops
-                    foreach (var p in list)
+                    p.ParentRepo = this;
+                    foreach (var r in p.Files)
                     {
-                        p.ParentRepo = this;
+                        r.ParentPullRequst = p;
+                    }
+
+                    if (VerifyPullRequestCache(p))
+                    {
+                        PullRequests.Add(p);
                         foreach (var r in p.Files)
                         {
-                            r.ParentPullRequst = p;
                             r.LoadFromCache();
                         }
                     }
-
-                    PullRequests.Clear();
-                    PullRequests.AddRange(list);
+                    else
+                    {
+                        if (Directory.Exists(p.CacheDirectory))
+                            Directory.Delete(p.CacheDirectory, true);
+                    }
                 }
+
+                UpdateLocalSavedList(); //In case some were deleted, write the file back
             }
             catch (Exception ex)
             {
-                //Directory.Delete(CacheDirectory); This may be a good idea with a few more checks
                 Logger.Error($"{ex.GetType().Name}: Couldn't load {CachedLocalPullRequestListPath} because {ex.Message}");
             }
+        }
+
+        private static bool VerifyPullRequestCache(PullRequest p)
+        {
+            if (!Directory.Exists(p.CacheDirectory))
+                return false;
+
+            foreach (var f in p.Files)
+            {
+                if (!File.Exists(f.CachePathBase))
+                    return false;
+                if (!File.Exists(f.CachePathHead))
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -223,10 +250,8 @@ namespace SemDiff.Core
         /// </summary>
         public void UpdateLocalSavedList()
         {
-            var path = CacheDirectory.ToLocalPath();
-            path = Path.Combine(path, CachedLocalPullRequestListPath);
-            new FileInfo(path).Directory.Create();
-            File.WriteAllText(path, JsonConvert.SerializeObject(PullRequests, Formatting.Indented));
+            Directory.CreateDirectory(CacheDirectory);
+            File.WriteAllText(CachedLocalPullRequestListPath, JsonConvert.SerializeObject(PullRequests, Formatting.Indented));
         }
 
         /// <summary>
