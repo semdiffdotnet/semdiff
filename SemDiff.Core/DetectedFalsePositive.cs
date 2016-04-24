@@ -20,6 +20,7 @@ namespace SemDiff.Core
         public PullRequest RemoteChange { get; set; }
         public RepoFile RemoteFile { get; set; }
         public ConflictTypes ConflictType { get; set; }
+        public string MethodName { get; internal set; }
 
         public override string ToString()
         {

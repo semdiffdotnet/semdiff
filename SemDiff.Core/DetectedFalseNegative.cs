@@ -13,12 +13,13 @@ namespace SemDiff.Core
         public Location Location { get; internal set; }
         public PullRequest RemoteChange { get; internal set; }
         public RepoFile RemoteFile { get; internal set; }
-        public string TypeName { get; internal set; }
+        public string DerivedTypeName { get; internal set; }
+        public string BaseTypeName { get; internal set; }
 
         public override string ToString()
         {
             return $@"{nameof(DetectedFalseNegative)}: Location = {Location}, RemoteChange ={ ""
-                } {RemoteChange?.Url}, RemoteFile = {RemoteFile.Filename}, TypeName = {TypeName}";
+                } {RemoteChange?.Url}, RemoteFile = {RemoteFile.Filename}, TypeName = {DerivedTypeName}";
         }
     }
 }

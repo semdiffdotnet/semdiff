@@ -13,6 +13,9 @@ namespace SemDiff.Core.Exceptions
         public GitHubUrlNotFoundException(string path)
             : base($"Repository at '{path}' doesn't seem to be a GitHub repository.")
         {
+            Path = path;
         }
+
+        public string Path { get; private set; }
     }
 }

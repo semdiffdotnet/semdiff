@@ -40,7 +40,7 @@ namespace SemDiff.Core
             };
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-            CacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName); 
+            CacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName);
             GetConfiguration();
         }
 
@@ -393,12 +393,12 @@ namespace SemDiff.Core
                         var unauth = await response.Content.ReadAsStringAsync();
                         var unauthorizedError = DeserializeWithErrorHandling<GitHubError>(unauth, supress_error: true);
                         Logger.Error($"{nameof(GitHubAuthenticationFailureException)}: {unauthorizedError?.Message ?? unauth}");
-                        throw new GitHubAuthenticationFailureException();
+                        throw new GitHubAuthenticationFailureException(unauthorizedError.Message);
                     case HttpStatusCode.Forbidden:
                         var forbid = await response.Content.ReadAsStringAsync();
                         var forbidError = DeserializeWithErrorHandling<GitHubError>(forbid, supress_error: true);
                         Logger.Error($"{nameof(GitHubRateLimitExceededException)}: {forbidError?.Message ?? forbid}");
-                        throw new GitHubRateLimitExceededException();
+                        throw new GitHubRateLimitExceededException(RequestsLimit, !string.IsNullOrWhiteSpace(AuthToken));
                     case HttpStatusCode.NotModified:
                         //Returns null because we have nothing to update if nothing was modified
                         return null;
