@@ -150,7 +150,7 @@ namespace SemDiff.Core
             }
             relativePath = relativePath.ToStandardPath();
             return repo.PullRequests
-                .SelectMany(p => p.Files
+                .SelectMany(p => p.ValidFiles
                                    .Select(f => new { n = f.Filename, f, p }))
                                    .Where(a => a.n == relativePath)
                                    .Select(a => new Pull(a.f, a.p))

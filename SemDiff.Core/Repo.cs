@@ -28,9 +28,8 @@ namespace SemDiff.Core
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         private static readonly Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
 
-        public Repo(string gitDir, string repoOwner, string repoName, string authUsername = null, string authToken = null)
+        public Repo(string gitDir, string repoOwner, string repoName)
         {
-            Logger.Info($"{nameof(Repo)}: {authUsername}:{authToken} for {repoOwner}\\{repoName}");
             Owner = repoOwner;
             RepoName = repoName;
             LocalGitDirectory = gitDir;
@@ -42,17 +41,7 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
             CacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName);
-
-            if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
-            {
-                AuthUsername = authUsername;
-                AuthToken = authToken;
-                Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
-            }
-            else
-            {
-                GetConfiguration();
-            }
+            GetConfiguration();
         }
 
         #region Move to config object
@@ -136,32 +125,59 @@ namespace SemDiff.Core
             Debug.Assert(this != null);
             try
             {
-                var path = CachedLocalPullRequestListPath;
-                if (File.Exists(path))
+                if (!Directory.Exists(CacheDirectory))
+                    return;
+                if (!File.Exists(CachedLocalPullRequestListPath))
+                    return;
+                var json = File.ReadAllText(CachedLocalPullRequestListPath);
+                var list = JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json);
+                PullRequests.Clear();
+                foreach (var p in list)
                 {
-                    var json = File.ReadAllText(path);
-                    var list = JsonConvert.DeserializeObject<IEnumerable<PullRequest>>(json);
-
                     //Restore Self-Referential Loops
-                    foreach (var p in list)
+                    p.ParentRepo = this;
+                    foreach (var r in p.ValidFiles)
                     {
-                        p.ParentRepo = this;
-                        foreach (var r in p.Files)
+                        r.ParentPullRequst = p;
+                    }
+
+                    if (VerifyPullRequestCache(p))
+                    {
+                        PullRequests.Add(p);
+                        foreach (var r in p.ValidFiles)
                         {
-                            r.ParentPullRequst = p;
                             r.LoadFromCache();
                         }
                     }
-
-                    PullRequests.Clear();
-                    PullRequests.AddRange(list);
+                    else
+                    {
+                        if (Directory.Exists(p.CacheDirectory))
+                            Directory.Delete(p.CacheDirectory, true);
+                    }
                 }
+
+                UpdateLocalSavedList(); //In case some were deleted, write the file back
             }
             catch (Exception ex)
             {
-                //Directory.Delete(CacheDirectory); This may be a good idea with a few more checks
                 Logger.Error($"{ex.GetType().Name}: Couldn't load {CachedLocalPullRequestListPath} because {ex.Message}");
             }
+        }
+
+        private static bool VerifyPullRequestCache(PullRequest p)
+        {
+            if (!Directory.Exists(p.CacheDirectory))
+                return false;
+
+            foreach (var f in p.ValidFiles)
+            {
+                if (!File.Exists(f.CachePathBase))
+                    return false;
+                if (!File.Exists(f.CachePathHead))
+                    return false;
+            }
+
+            return true;
         }
 
         /// <summary>
@@ -223,10 +239,8 @@ namespace SemDiff.Core
         /// </summary>
         public void UpdateLocalSavedList()
         {
-            var path = CacheDirectory.ToLocalPath();
-            path = Path.Combine(path, CachedLocalPullRequestListPath);
-            new FileInfo(path).Directory.Create();
-            File.WriteAllText(path, JsonConvert.SerializeObject(PullRequests, Formatting.Indented));
+            Directory.CreateDirectory(CacheDirectory);
+            File.WriteAllText(CachedLocalPullRequestListPath, JsonConvert.SerializeObject(PullRequests, Formatting.Indented));
         }
 
         /// <summary>
@@ -243,7 +257,7 @@ namespace SemDiff.Core
                 }
                 LastUpdate = DateTime.Now;
             }
-
+            GetConfiguration();
             var pulls = await GetPullRequestsAsync();
             if (pulls == null)
             {
@@ -361,7 +375,7 @@ namespace SemDiff.Core
             {
                 Client.DefaultRequestHeaders.IfNoneMatch.Add(EntityTagHeaderValue.Parse(etag.Value));
             }
-            var response = await Extensions.RetryOnceAsync(() => Client.GetAsync(url), TimeSpan.FromMinutes(5));
+            var response = await Client.GetAsync(url);
             IEnumerable<string> headerVal;
             if (response.Headers.TryGetValues("X-RateLimit-Limit", out headerVal))
             {
@@ -377,13 +391,13 @@ namespace SemDiff.Core
                 {
                     case HttpStatusCode.Unauthorized:
                         var unauth = await response.Content.ReadAsStringAsync();
-                        var unauthorizedError = DeserializeWithErrorHandling<GitHubError>(unauth);
-                        Logger.Error($"{nameof(GitHubAuthenticationFailureException)}: {unauthorizedError.Message}");
+                        var unauthorizedError = DeserializeWithErrorHandling<GitHubError>(unauth, supress_error: true);
+                        Logger.Error($"{nameof(GitHubAuthenticationFailureException)}: {unauthorizedError?.Message ?? unauth}");
                         throw new GitHubAuthenticationFailureException(unauthorizedError.Message);
                     case HttpStatusCode.Forbidden:
                         var forbid = await response.Content.ReadAsStringAsync();
-                        var forbidError = DeserializeWithErrorHandling<GitHubError>(forbid);
-                        Logger.Error($"{nameof(GitHubRateLimitExceededException)}: {forbidError.Message}");
+                        var forbidError = DeserializeWithErrorHandling<GitHubError>(forbid, supress_error: true);
+                        Logger.Error($"{nameof(GitHubRateLimitExceededException)}: {forbidError?.Message ?? forbid}");
                         throw new GitHubRateLimitExceededException(RequestsLimit, !string.IsNullOrWhiteSpace(AuthToken));
                     case HttpStatusCode.NotModified:
                         //Returns null because we have nothing to update if nothing was modified
@@ -391,8 +405,10 @@ namespace SemDiff.Core
 
                     default:
                         var str = await response.Content.ReadAsStringAsync();
-                        var error = DeserializeWithErrorHandling<GitHubError>(str);
-                        throw error.ToException();
+                        if (str == "Not Found")
+                            throw new GitHubUnknownErrorException("Not Found");
+                        var error = DeserializeWithErrorHandling<GitHubError>(str, supress_error: true);
+                        throw error?.ToException() ?? new GitHubUnknownErrorException(str);
                 }
             }
             if (etag != null && response.Headers.TryGetValues("ETag", out headerVal))
@@ -434,7 +450,7 @@ namespace SemDiff.Core
             }
         }
 
-        private static T DeserializeWithErrorHandling<T>(string content)
+        private static T DeserializeWithErrorHandling<T>(string content, bool supress_error = false)
         {
             try
             {
@@ -443,7 +459,10 @@ namespace SemDiff.Core
             catch (Exception ex)
             {
                 Logger.Error($"{nameof(GitHubDeserializationException)}: {ex.Message}");
-                throw new GitHubDeserializationException(ex);
+                if (!supress_error)
+                    throw new GitHubDeserializationException(ex);
+                else
+                    return default(T);
             }
         }
 

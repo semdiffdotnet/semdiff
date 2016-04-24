@@ -61,7 +61,7 @@ namespace SemDiff.Test
             });
             var pr = repo.PullRequests.First();
             pr.ParentRepo = repo;
-            pr.Files.First().ParentPullRequst = pr;
+            pr.ValidFiles.First().ParentPullRequst = pr;
 
             var res = Analysis.ForFalsePositive(repo, local);
             Assert.IsTrue(res.Any());
