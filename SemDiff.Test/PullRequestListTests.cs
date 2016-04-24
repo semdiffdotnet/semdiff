@@ -140,7 +140,6 @@ namespace SemDiff.Test
         public void UpdateLocalSavedJsonFileOfPullRequests()
         {
             repo.GetPullRequestsAsync().Wait();
-            //var path = repo.CacheDirectory.Replace('/', Path.DirectorySeparatorChar);
             var path = Path.Combine(repo.CacheDirectory, repo.CachedLocalPullRequestListPath);
             new FileInfo(path).Directory.Create();
             if (File.Exists(path))
@@ -167,7 +166,7 @@ namespace SemDiff.Test
         public void RemoveClosedAndDeletedPullRequestFiles()
         {
             var requests = repo.GetPullRequestsAsync().Result;
-            var zeroDir = Path.Combine(repo.CacheDirectory.Replace('/', Path.DirectorySeparatorChar), "0");
+            var zeroDir = Path.Combine(repo.CacheDirectory, "0");
             Directory.CreateDirectory(zeroDir);
             var prZero = requests.First().Clone();
             prZero.Number = 0;
