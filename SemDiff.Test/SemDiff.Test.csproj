@@ -135,11 +135,11 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="ConfigurationTests.cs" />
     <Compile Include="Configuration\AuthenticationUnitTestsElement.cs" />
     <Compile Include="Configuration\AuthenticationUnitTestsSection.cs" />
     <Compile Include="DiffTests.cs" />
     <Compile Include="Extensions.cs" />
-    <Compile Include="GitHubAuthTests.cs" />
     <Compile Include="LoggerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RepoTests.cs" />

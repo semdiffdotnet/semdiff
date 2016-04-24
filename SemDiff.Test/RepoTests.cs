@@ -168,16 +168,22 @@ namespace SemDiff.Test
             repo.AssertRateLimit();
             var requests = repo.GetPullRequestsAsync().Result;
             var zeroDir = Path.Combine(repo.CacheDirectory.Replace('/', Path.DirectorySeparatorChar), "0");
-            Directory.CreateDirectory(zeroDir);
-            var prZero = requests.First().Clone();
+            var prZero = requests.OrderBy(p => p.Number).First().Clone();
             prZero.Number = 0;
+            prZero.ParentRepo = repo;
+            foreach (var f in prZero.Files) //Add files to fool it!
+            {
+                f.ParentPullRequst = prZero;
+                new FileInfo(f.CachePathBase).Directory.Create();
+                File.WriteAllText(f.CachePathBase, "<BAD>");
+                File.WriteAllText(f.CachePathHead, "<BAD>");
+            }
             repo.PullRequests.Add(prZero);
             var json = repo.CachedLocalPullRequestListPath;
             File.WriteAllText(json, JsonConvert.SerializeObject(repo.PullRequests));
             repo.GetCurrentSaved();
             repo.EtagNoChanges = null;
             requests = repo.GetPullRequestsAsync().Result;
-            //Task.Delay(1000).Wait(); //http://stackoverflow.com/a/25421332/2899390
             Assert.IsFalse(Directory.Exists(zeroDir));
         }
 

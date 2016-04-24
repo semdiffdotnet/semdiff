@@ -165,6 +165,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void RemoveClosedAndDeletedPullRequestFiles()
         {
+<<<<<<< HEAD
             var requests = repo.GetPullRequestsAsync().Result;
             var zeroDir = Path.Combine(repo.CacheDirectory, "0");
             Directory.CreateDirectory(zeroDir);
@@ -176,6 +177,27 @@ namespace SemDiff.Test
             repo.GetCurrentSaved();
             repo.EtagNoChanges = null;
             requests = repo.GetPullRequestsAsync().Result;
+=======
+            github.AssertRateLimit();
+            var requests = github.GetPullRequestsAsync().Result;
+            var zeroDir = Path.Combine(github.CacheDirectory.Replace('/', Path.DirectorySeparatorChar), "0");
+            var prZero = requests.OrderBy(p => p.Number).First().Clone();
+            prZero.Number = 0;
+            prZero.ParentRepo = github;
+            foreach (var f in prZero.Files) //Add files to fool it!
+            {
+                f.ParentPullRequst = prZero;
+                new FileInfo(f.CachePathBase).Directory.Create();
+                File.WriteAllText(f.CachePathBase, "<BAD>");
+                File.WriteAllText(f.CachePathHead, "<BAD>");
+            }
+            github.PullRequests.Add(prZero);
+            var json = github.CachedLocalPullRequestListPath;
+            File.WriteAllText(json, JsonConvert.SerializeObject(github.PullRequests));
+            github.GetCurrentSaved();
+            github.EtagNoChanges = null;
+            requests = github.GetPullRequestsAsync().Result;
+>>>>>>> refs/remotes/origin/master
             //Task.Delay(1000).Wait(); //http://stackoverflow.com/a/25421332/2899390
             Assert.IsFalse(Directory.Exists(zeroDir));
         }
@@ -214,6 +236,18 @@ namespace SemDiff.Test
                 r.GetFilesAsync().Wait();
             }
             Assert.IsTrue(fileLastUpdated == File.GetLastWriteTimeUtc(path));
+        }
+
+        [TestMethod]
+        public void DownloadLineEndingsTest()
+        {
+            var requests = github.GetPullRequestsAsync().Result;
+            Assert.IsTrue(github.LineEndings == LineEndingType.crlf);
+            foreach (var r in requests)
+            {
+                r.GetFilesAsync().Wait();
+                Assert.IsTrue(r.Files.All(f => f.BaseTree.ToString().Contains("\r\n") && f.HeadTree.ToString().Contains("\r\n")));
+            }
         }
     }
 }
