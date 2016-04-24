@@ -67,13 +67,12 @@ namespace SemDiff.Core
         /// <returns>an action that can be passed to AddHooks</returns>
         public static Action<string> LogToFile(string fileName)
         {
-            var file = File.AppendText(fileName);
+            var file = new object();
             return s =>
             {
                 lock (file)
                 {
-                    file.WriteLine(s);
-                    file.Flush();
+                    File.AppendAllLines(fileName, new[] { s });
                 }
             };
         }
