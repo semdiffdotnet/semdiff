@@ -4,6 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using System;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -34,10 +35,10 @@ namespace SemDiff.Core
         public SyntaxTree BaseTree { get; set; }
 
         [JsonIgnore]
-        public string CachePathBase => Path.Combine(ParentPullRequst.CacheDirectory, Filename.ToStandardPath() + ".orig");
+        public string CachePathBase => Path.Combine(ParentPullRequst.CacheDirectory, Filename.ToLocalPath() + ".orig");
 
         [JsonIgnore]
-        public string CachePathHead => Path.Combine(ParentPullRequst.CacheDirectory, Filename.ToStandardPath());
+        public string CachePathHead => Path.Combine(ParentPullRequst.CacheDirectory, Filename.ToLocalPath());
 
         public string Filename { get; set; }
 

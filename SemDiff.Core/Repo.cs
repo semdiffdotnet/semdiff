@@ -379,12 +379,12 @@ namespace SemDiff.Core
                         var unauth = await response.Content.ReadAsStringAsync();
                         var unauthorizedError = DeserializeWithErrorHandling<GitHubError>(unauth);
                         Logger.Error($"{nameof(GitHubAuthenticationFailureException)}: {unauthorizedError.Message}");
-                        throw new GitHubAuthenticationFailureException();
+                        throw new GitHubAuthenticationFailureException(unauthorizedError.Message);
                     case HttpStatusCode.Forbidden:
                         var forbid = await response.Content.ReadAsStringAsync();
                         var forbidError = DeserializeWithErrorHandling<GitHubError>(forbid);
                         Logger.Error($"{nameof(GitHubRateLimitExceededException)}: {forbidError.Message}");
-                        throw new GitHubRateLimitExceededException();
+                        throw new GitHubRateLimitExceededException(RequestsLimit, !string.IsNullOrWhiteSpace(AuthToken));
                     case HttpStatusCode.NotModified:
                         //Returns null because we have nothing to update if nothing was modified
                         return null;

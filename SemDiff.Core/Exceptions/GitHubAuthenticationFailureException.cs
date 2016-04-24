@@ -10,8 +10,11 @@ namespace SemDiff.Core.Exceptions
     [Serializable]
     public class GitHubAuthenticationFailureException : Exception
     {
-        public GitHubAuthenticationFailureException() : base("Authentication Failure")
+        public GitHubAuthenticationFailureException(string githubMessage) : base("Authentication Failure")
         {
+            GithubMessage = githubMessage; //Likely "Bad credentials"
         }
+
+        public string GithubMessage { get; }
     }
 }
