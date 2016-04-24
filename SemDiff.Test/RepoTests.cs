@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace SemDiff.Test
 {
@@ -18,31 +19,31 @@ namespace SemDiff.Test
         private const string repository = "curly-broccoli";
         private const string authUsername = "haroldhues";
         private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
-        public static Repo github;
+        public static Repo repo;
 
         [TestInitialize]
         public void TestInit()
         {
-            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-            github = new Repo(repoLoc, owner, repository, authUsername, authToken);
-            github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
+            var gitFolder = Path.Combine(appDataFolder, ".git");
+            repo = new Repo(gitFolder, owner, repository, authUsername, authToken);
+            repo.UpdateLimitAsync().Wait();
             if (new FileInfo(appDataFolder).Exists)
                 Directory.Delete(appDataFolder, recursive: true);
         }
 
         [TestMethod]
-        public void NewGitHub()
+        public void RepoConstructorTest()
         {
-            Assert.AreEqual(github.RepoName, repository);
-            Assert.AreEqual(github.Owner, owner);
+            Assert.AreEqual(repo.RepoName, repository);
+            Assert.AreEqual(repo.Owner, owner);
         }
 
         [TestMethod]
         public void PullRequestFromTestRepo()
         {
-            github.AssertRateLimit();
-            var requests = github.GetPullRequestsAsync().Result;
+            repo.AssertRateLimit();
+            var requests = repo.GetPullRequestsAsync().Result;
             Assert.AreEqual(5, requests.Count);
             var r = requests.ElementAt(requests.Count - 4);
             if (r.Number == 4)
@@ -64,39 +65,39 @@ namespace SemDiff.Test
         [TestMethod]
         public void EtagNotModified()
         {
-            github.AssertRateLimit();
-            var requests = github.GetPullRequestsAsync().Result;
-            requests = github.GetPullRequestsAsync().Result;
+            repo.AssertRateLimit();
+            var requests = repo.GetPullRequestsAsync().Result;
+            requests = repo.GetPullRequestsAsync().Result;
             Assert.AreEqual(null, requests);
         }
 
         [TestMethod]
-        public void Pagination()
+        public void PaginationOnRoslynPRs()
         {
-            github.AssertRateLimit();
-            github.Owner = "dotnet";
-            github.RepoName = "roslyn";
-            var roslynPRs = github.GetPullRequestsAsync().Result;
+            repo.AssertRateLimit();
+            repo.Owner = "dotnet";
+            repo.RepoName = "roslyn";
+            var roslynPRs = repo.GetPullRequestsAsync().Result;
             Assert.IsTrue(roslynPRs.Count > 30);
         }
 
         [TestMethod]
-        public void FilesPagination()
+        public void FilesPaginationOn50States()
         {
-            github.AssertRateLimit();
-            github.Owner = "semdiffdotnet";
-            github.RepoName = "50states";
-            var PRs = github.GetPullRequestsAsync().Result;
+            repo.AssertRateLimit();
+            repo.Owner = "semdiffdotnet";
+            repo.RepoName = "50states";
+            var PRs = repo.GetPullRequestsAsync().Result;
             Assert.AreEqual(1, PRs.Count);
             var pr = PRs.First();
             Assert.AreEqual(84, pr.Files.Count);
         }
 
         [TestMethod]
-        public void GetFilesFromGitHub()
+        public void DownloadFilesFromGitHub()
         {
-            github.AssertRateLimit();
-            var requests = github.GetPullRequestsAsync().Result;
+            repo.AssertRateLimit();
+            var requests = repo.GetPullRequestsAsync().Result;
             var fourWasFound = false;
             foreach (var r in requests)
             {
@@ -134,22 +135,22 @@ namespace SemDiff.Test
         }
 
         [TestMethod]
-        public void UpdateLocalSaved()
+        public void UpdateLocalSavedJsonFile()
         {
-            github.AssertRateLimit();
-            github.GetPullRequestsAsync().Wait();
-            var path = github.CacheDirectory.Replace('/', Path.DirectorySeparatorChar);
-            path = Path.Combine(path, github.CachedLocalPullRequestListPath);
+            repo.AssertRateLimit();
+            repo.GetPullRequestsAsync().Wait();
+            var path = repo.CacheDirectory.Replace('/', Path.DirectorySeparatorChar);
+            path = Path.Combine(path, repo.CachedLocalPullRequestListPath);
             new FileInfo(path).Directory.Create();
             if (File.Exists(path))
                 File.Delete(path);
-            github.UpdateLocalSavedList();
+            repo.UpdateLocalSavedList();
             Assert.IsTrue(File.Exists(path));
             var json = File.ReadAllText(path);
             var currentSaved = JsonConvert.DeserializeObject<IList<PullRequest>>(json);
-            Assert.AreEqual(github.PullRequests.Count, currentSaved.Count);
+            Assert.AreEqual(repo.PullRequests.Count, currentSaved.Count);
             var local = currentSaved.First();
-            var gPR = github.PullRequests.First();
+            var gPR = repo.PullRequests.First();
             Assert.AreEqual(local.Number, gPR.Number);
             Assert.AreEqual(local.State, gPR.State);
             Assert.AreEqual(local.Title, gPR.Title);
@@ -162,20 +163,20 @@ namespace SemDiff.Test
         }
 
         [TestMethod]
-        public void RemoveUnusedLocalFiles()
+        public void RemovedClosedAndDeletedPRCachedFiles()
         {
-            github.AssertRateLimit();
-            var requests = github.GetPullRequestsAsync().Result;
-            var zeroDir = Path.Combine(github.CacheDirectory.Replace('/', Path.DirectorySeparatorChar), "0");
+            repo.AssertRateLimit();
+            var requests = repo.GetPullRequestsAsync().Result;
+            var zeroDir = Path.Combine(repo.CacheDirectory.Replace('/', Path.DirectorySeparatorChar), "0");
             Directory.CreateDirectory(zeroDir);
             var prZero = requests.First().Clone();
             prZero.Number = 0;
-            github.PullRequests.Add(prZero);
-            var json = github.CachedLocalPullRequestListPath;
-            File.WriteAllText(json, JsonConvert.SerializeObject(github.PullRequests));
-            github.GetCurrentSaved();
-            github.EtagNoChanges = null;
-            requests = github.GetPullRequestsAsync().Result;
+            repo.PullRequests.Add(prZero);
+            var json = repo.CachedLocalPullRequestListPath;
+            File.WriteAllText(json, JsonConvert.SerializeObject(repo.PullRequests));
+            repo.GetCurrentSaved();
+            repo.EtagNoChanges = null;
+            requests = repo.GetPullRequestsAsync().Result;
             //Task.Delay(1000).Wait(); //http://stackoverflow.com/a/25421332/2899390
             Assert.IsFalse(Directory.Exists(zeroDir));
         }
@@ -183,19 +184,19 @@ namespace SemDiff.Test
         [TestMethod]
         public void LastSessionLocalFiles()
         {
-            github.AssertRateLimit();
-            var requests = github.GetPullRequestsAsync().Result;
-            github.UpdateLocalSavedList();
-            var newgithub = new Repo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff)), owner, repository);
-            newgithub.GetCurrentSaved();
-            Assert.IsNotNull(newgithub.PullRequests);
+            repo.AssertRateLimit();
+            var requests = repo.GetPullRequestsAsync().Result;
+            repo.UpdateLocalSavedList();
+            var newRepo = new Repo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff)), owner, repository);
+            newRepo.GetCurrentSaved();
+            Assert.IsNotNull(newRepo.PullRequests);
         }
 
         [TestMethod]
         public void NoUnnecessaryDownloading()
         {
-            github.AssertRateLimit();
-            var requests = github.GetPullRequestsAsync().Result;
+            repo.AssertRateLimit();
+            var requests = repo.GetPullRequestsAsync().Result;
             var path = "";
             foreach (var r in requests)
             {
@@ -209,8 +210,8 @@ namespace SemDiff.Test
                 }
             }
             var fileLastUpdated = File.GetLastWriteTimeUtc(path);
-            github.EtagNoChanges = null;
-            requests = github.GetPullRequestsAsync().Result;
+            repo.EtagNoChanges = null;
+            requests = repo.GetPullRequestsAsync().Result;
             foreach (var r in requests)
             {
                 r.GetFilesAsync().Wait();
