@@ -28,9 +28,8 @@ namespace SemDiff.Core
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
         private static readonly Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
 
-        public Repo(string gitDir, string repoOwner, string repoName, string authUsername = null, string authToken = null)
+        public Repo(string gitDir, string repoOwner, string repoName)
         {
-            Logger.Info($"{nameof(Repo)}: {authUsername}:{authToken} for {repoOwner}\\{repoName}");
             Owner = repoOwner;
             RepoName = repoName;
             LocalGitDirectory = gitDir;
@@ -41,18 +40,8 @@ namespace SemDiff.Core
             };
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-            CacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName);
-
-            if (!string.IsNullOrWhiteSpace(authUsername) && !string.IsNullOrWhiteSpace(authToken))
-            {
-                AuthUsername = authUsername;
-                AuthToken = authToken;
-                Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
-            }
-            else
-            {
-                GetConfiguration();
-            }
+            CacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName); 
+            GetConfiguration();
         }
 
         #region Move to config object
