@@ -19,8 +19,9 @@ namespace SemDiff.Test
         private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
         public static Repo repo;
 
-        [ClassInitialize]
-        public void ClassInit()
+        //Update API call limit and delete old files.
+        [TestInitialize]
+        public void RepoInit()
         {
             var repoLocation = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
             repo = new Repo(repoLocation, owner, repository);
@@ -30,16 +31,11 @@ namespace SemDiff.Test
             config.Username = authUsername;
             config.AuthToken = authToken;
             File.WriteAllText(path, JsonConvert.SerializeObject(config, Formatting.Indented));
-            repo.GetAuthentication();
-        }
-
-        //Update API call limit and delete old files.
-        [TestInitialize]
-        public void TestInit()
-        {
+            repo.GetConfiguration();
             repo.UpdateLimitAsync().Wait();
             if (new FileInfo(repo.CacheDirectory).Exists)
                 Directory.Delete(repo.CacheDirectory, recursive: true);
+            repo.AssertRateLimit();
         }
 
         [TestMethod]
@@ -52,10 +48,6 @@ namespace SemDiff.Test
         [TestMethod]
         public void CheckPullRequestsAreProperlyStoredInRepo()
         {
-            if (repo.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
             var requests = repo.GetPullRequestsAsync().Result;
             Assert.AreEqual(5, requests.Count);
             var r = requests.ElementAt(requests.Count - 4);
@@ -78,10 +70,7 @@ namespace SemDiff.Test
         [TestMethod]
         public void EtagNotModifiedIsReturnedWhenNothingHasChanged()
         {
-            if (repo.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
+            
             var requests = repo.GetPullRequestsAsync().Result;
             requests = repo.GetPullRequestsAsync().Result;
             Assert.AreEqual(null, requests);
@@ -90,10 +79,6 @@ namespace SemDiff.Test
         [TestMethod]
         public void PullRequestPaginationTestOnRoslyn()
         {
-            if (repo.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
             repo.Owner = "dotnet";
             repo.RepoName = "roslyn";
             var roslynPRs = repo.GetPullRequestsAsync().Result;
@@ -103,10 +88,6 @@ namespace SemDiff.Test
         [TestMethod]
         public void FilePaginationOn50States()
         {
-            if (repo.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
             repo.Owner = "semdiffdotnet";
             repo.RepoName = "50states";
             var PRs = repo.GetPullRequestsAsync().Result;
@@ -118,10 +99,6 @@ namespace SemDiff.Test
         [TestMethod]
         public void DownloadFilesFromGitHub()
         {
-            if (repo.RequestsRemaining == 0)
-            {
-                Assert.Inconclusive("Thou hast ran out of requests");
-            }
             var requests = repo.GetPullRequestsAsync().Result;
             var fourWasFound = false;
             foreach (var r in requests)
@@ -163,8 +140,8 @@ namespace SemDiff.Test
         public void UpdateLocalSavedJsonFileOfPullRequests()
         {
             repo.GetPullRequestsAsync().Wait();
-            var path = repo.CacheDirectory.Replace('/', Path.DirectorySeparatorChar);
-            path = Path.Combine(path, repo.CachedLocalPullRequestListPath);
+            //var path = repo.CacheDirectory.Replace('/', Path.DirectorySeparatorChar);
+            var path = Path.Combine(repo.CacheDirectory, repo.CachedLocalPullRequestListPath);
             new FileInfo(path).Directory.Create();
             if (File.Exists(path))
                 File.Delete(path);
