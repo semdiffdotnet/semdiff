@@ -257,7 +257,7 @@ namespace SemDiff.Core
                 }
                 LastUpdate = DateTime.Now;
             }
-
+            GetConfiguration();
             var pulls = await GetPullRequestsAsync();
             if (pulls == null)
             {

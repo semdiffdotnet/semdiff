@@ -135,9 +135,6 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="ConfigurationTests.cs" />
-    <Compile Include="Configuration\AuthenticationUnitTestsElement.cs" />
-    <Compile Include="Configuration\AuthenticationUnitTestsSection.cs" />
     <Compile Include="DiffTests.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="LoggerTests.cs" />
