@@ -19,6 +19,7 @@ namespace SemDiff.Test
                 Directory.Delete(curlyPath, true);
             }
             var repo = Repository.Clone("https://github.com/semdiffdotnet/curly-broccoli.git", curlyPath);
+            Repo.ClearCache();
             CurlyBroccoli = Repo.GetRepoFor(repo);
 
             if (!string.IsNullOrWhiteSpace(checkoutBranch))
@@ -37,6 +38,8 @@ namespace SemDiff.Test
                     r.Checkout(branch);
                 }
             }
+
+            CurlyBroccoli.UpdateRemoteChangesAsync().Wait();
         }
 
         private static void SetNormalAttr(DirectoryInfo directory)
