@@ -8,6 +8,23 @@ namespace SemDiff.Test
 {
     public class TestBase
     {
+        private const string authUsername = "haroldhues";
+        private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
+
+        public Repo GetDummyRepo(string folder, string owner, string repository)
+        {
+            folder = Path.GetFullPath(folder);
+            if (Directory.Exists(folder))
+                Directory.Delete(folder, true);
+            Directory.CreateDirectory(folder);
+            var git = Path.Combine(folder, ".git");
+            var repopath = Repository.Init(folder, git);
+            var github = new Repo(repopath, owner, repository);
+            github.UpdateAuthenticationHeader(authUsername, authToken);
+            github.UpdateLimitAsync().Wait();
+            return github;
+        }
+
         public static Repo CurlyBroccoli { get; private set; }
 
         public static void CloneCurlyBrocoli(string checkoutBranch = null)
@@ -21,6 +38,8 @@ namespace SemDiff.Test
             var repo = Repository.Clone("https://github.com/semdiffdotnet/curly-broccoli.git", curlyPath);
             Repo.ClearCache();
             CurlyBroccoli = Repo.GetRepoFor(repo);
+            CurlyBroccoli.UpdateAuthenticationHeader(authUsername, authToken);
+            CurlyBroccoli.UpdateRemoteChangesAsync().Wait();
 
             if (!string.IsNullOrWhiteSpace(checkoutBranch))
             {
@@ -39,7 +58,6 @@ namespace SemDiff.Test
                 }
             }
 
-            CurlyBroccoli.UpdateRemoteChangesAsync().Wait();
         }
 
         private static void SetNormalAttr(DirectoryInfo directory)

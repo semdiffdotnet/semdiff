@@ -15,19 +15,12 @@ namespace SemDiff.Test
     {
         private const string owner = "semdiffdotnet";
         private const string repository = "curly-broccoli";
-        private const string authUsername = "haroldhues";
-        private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
         public static Repo github;
 
         [TestInitialize]
         public void TestInit()
         {
-            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), "semdiffdotnet", repository);
-            github = new Repo(repoLoc, owner, repository);
-            github.UpdateLimitAsync().Wait();
-            var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
-            if (new FileInfo(appDataFolder).Exists)
-                Directory.Delete(appDataFolder, recursive: true);
+            github = GetDummyRepo(nameof(GitIgnoreTests), owner, repository);
         }
 
         [TestMethod]

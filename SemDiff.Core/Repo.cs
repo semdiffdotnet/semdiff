@@ -43,6 +43,7 @@ namespace SemDiff.Core
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
             CacheDirectory = Path.Combine(LocalRepoDirectory, ".semdiff");
+            Directory.CreateDirectory(CacheDirectory);
             UpdateGitIgnore();
             GetConfiguration();
         }
@@ -53,7 +54,7 @@ namespace SemDiff.Core
 
         public HttpClient Client { get; private set; }
 
-        public string ConfigFile { get; } = "User_Config.json";
+        public string ConfigFile => Path.Combine(CacheDirectory, "User_Config.json");
 
         public string EtagNoChanges { get; set; }
 
@@ -96,31 +97,37 @@ namespace SemDiff.Core
         /// </summary>
         public void GetConfiguration()
         {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
-            Directory.CreateDirectory(path);
-            path = Path.Combine(path, ConfigFile);
-            if (File.Exists(path))
+            if (File.Exists(ConfigFile))
             {
-                var json = File.ReadAllText(path);
+                var json = File.ReadAllText(ConfigFile);
                 try
                 {
                     var auth = JsonConvert.DeserializeObject<Configuration>(json);
-                    AuthUsername = auth.Username;
-                    AuthToken = auth.AuthToken;
                     LineEndings = auth.LineEnding;
-                    Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
+                    if (!string.IsNullOrWhiteSpace(auth.Username) && !string.IsNullOrWhiteSpace(auth.AuthToken))
+                    {
+                        UpdateAuthenticationHeader(auth.Username, auth.AuthToken);
+                    }
                 }
                 catch (Exception ex)
                 {
                     //Directory.Delete(CacheDirectory); This may be a good idea with a few more checks
-                    Logger.Error($"{ex.GetType().Name}: Couldn't deserialize {path} because {ex.Message}");
+                    Logger.Error($"{ex.GetType().Name}: Couldn't deserialize {ConfigFile} because {ex.Message}");
                 }
             }
             else
             {
                 var newAuth = new Configuration();
-                File.WriteAllText(path, JsonConvert.SerializeObject(newAuth, Formatting.Indented));
+                File.WriteAllText(ConfigFile, JsonConvert.SerializeObject(newAuth, Formatting.Indented));
             }
+        }
+
+        //exposed for testing
+        internal void UpdateAuthenticationHeader(string authUsernam, string authToken)
+        {
+            AuthUsername = authUsernam;
+            AuthToken = authToken;
+            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
         }
 
         /// <summary>

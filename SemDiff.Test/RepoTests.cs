@@ -16,19 +16,12 @@ namespace SemDiff.Test
     {
         private const string owner = "semdiffdotnet";
         private const string repository = "curly-broccoli";
-        private const string authUsername = "haroldhues";
-        private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
         public static Repo repo;
 
         [TestInitialize]
         public void TestInit()
         {
-            var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
-            var gitFolder = Path.Combine(appDataFolder, ".git");
-            repo = new Repo(gitFolder, owner, repository);
-            repo.UpdateLimitAsync().Wait();
-            if (new FileInfo(appDataFolder).Exists)
-                Directory.Delete(appDataFolder, recursive: true);
+            repo = GetDummyRepo(nameof(RepoTests), owner, repository);
         }
 
         [TestMethod]
@@ -109,7 +102,7 @@ namespace SemDiff.Test
                     var dir = "";
                     var f = r.ValidFiles.Last();
                     directoryTokens = f.Filename.Split('/');
-                    dir = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "/SemDiff/semdiffdotnet/curly-broccoli/".ToLocalPath();
+                    dir = repo.CacheDirectory;
 
                     dir = Path.Combine(dir, r.Number.ToString(), f.Filename.ToLocalPath());
                     var text = File.ReadAllText(dir);
