@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -30,11 +31,12 @@ namespace SemDiff.Core
         /// <param name="context">object that allows the assignment of callbacks</param>
         public override void Initialize(AnalysisContext context)
         {
-            SetupLibGit2Sharp();
 #if DEBUG
             Logger.AddHooks(Logger.LogToFile($@"C:\Users\Public\Documents\semdiff_logs_{Guid.NewGuid()}.txt"));
-            Logger.Suppress(Logger.Severities.Trace);
+            Logger.Suppress();
 #endif
+
+            SetupLibGit2Sharp();
             context.RegisterCompilationAction(OnCompilation);
         }
 
@@ -46,22 +48,23 @@ namespace SemDiff.Core
             // Otherwise exceptions will be thrown. So this code is only executed once.
             if (Interlocked.Exchange(ref libGit2SharpNativePathSet, 1) == 0)
             {
-                if (Platform.OperatingSystem != OperatingSystemType.Windows)
+                if (Platform.OperatingSystem == OperatingSystemType.Windows)
                 {
                     if (Directory.Exists(GlobalSettings.NativeLibraryPath))
                         return; //We are likely debugging, no change needed
 
                     //"C:\Users\crhoe\.nuget\packages\SemDiff\0.6.0-rc1\analyzers\dotnet\cs\SemDiff.Core.dll"
                     var semdiffPath = new Uri(Assembly.GetExecutingAssembly().EscapedCodeBase).LocalPath;
+                    Logger.Debug(nameof(semdiffPath) + ": " + semdiffPath);
 
-                    var csdir = Path.GetDirectoryName(semdiffPath);
-                    var dotnetdir = Path.GetDirectoryName(csdir);
-                    var analyzersdir = Path.GetDirectoryName(dotnetdir);
-                    var packagedir = Path.GetDirectoryName(analyzersdir);
-                    //these are placed in a nested directory to avoid possible name conflicts in the future
-                    var libgit2sharpresources = Path.Combine(packagedir, "libgit2sharpresources");
-                    GlobalSettings.NativeLibraryPath = Path.Combine(libgit2sharpresources, "NativeBinaries");
+                    var containingdir = Path.GetDirectoryName(semdiffPath);
 
+                    var zipFile = Path.Combine(containingdir, "NativeBinaries.zip");
+                    File.WriteAllBytes(zipFile, NativeDlls.NativeBinaries);
+                    Directory.CreateDirectory(GlobalSettings.NativeLibraryPath);
+                    ZipFile.ExtractToDirectory(zipFile, GlobalSettings.NativeLibraryPath);
+
+                    Logger.Debug(nameof(GlobalSettings.NativeLibraryPath) + ": " + GlobalSettings.NativeLibraryPath);
                     if (!Directory.Exists(GlobalSettings.NativeLibraryPath))
                         throw new NotImplementedException(nameof(LibGit2Sharp) + " native libraries could not be found");
                 }
