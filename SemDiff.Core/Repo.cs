@@ -26,6 +26,8 @@ namespace SemDiff.Core
     {
         private static readonly Regex _gitHubUrl = new Regex(@"(git@|https:\/\/)github\.com(:|\/)(.*)\/(.*)");
         private static readonly ConcurrentDictionary<string, Repo> _repoLookup = new ConcurrentDictionary<string, Repo>();
+        private static readonly Regex cacheFolder = new Regex(@"^\.semdiff\/$");
+
         private static readonly Regex nextLinkPattern = new Regex("<(http[^ ]*)>; *rel *= *\"next\"");
 
         public Repo(string gitDir, string repoOwner, string repoName)
@@ -40,67 +42,39 @@ namespace SemDiff.Core
             };
             Client.DefaultRequestHeaders.UserAgent.ParseAdd(nameof(SemDiff));
             Client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github.v3+json");
-            CacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), Owner, RepoName);
+            CacheDirectory = Path.Combine(LocalRepoDirectory, ".semdiff");
+            Directory.CreateDirectory(CacheDirectory);
+            UpdateGitIgnore();
             GetConfiguration();
         }
 
-        #region Move to config object
-
-        public static TimeSpan MaxUpdateInterval { get; set; } = TimeSpan.FromMinutes(5);
-        public string AuthToken { get; set; }
-        public string AuthUsername { get; set; }
-
-        #endregion Move to config object
-
         public string CacheDirectory { get; set; }
+
         public string CachedLocalPullRequestListPath => Path.Combine(CacheDirectory, "LocalList.json");
-        public string ConfigFile { get; } = "User_Config.json";
+
         public HttpClient Client { get; private set; }
+
+        public string ConfigFile => Path.Combine(CacheDirectory, "User_Config.json");
+
         public string EtagNoChanges { get; set; }
+
         public DateTime LastUpdate { get; internal set; } = DateTime.MinValue;
-        public string LocalGitDirectory { get; }
-        public string LocalRepoDirectory => Path.GetDirectoryName(Path.GetDirectoryName(LocalGitDirectory));
-        public string Owner { get; set; }
+
         public LineEndingType LineEndings { get; set; }
+
+        public string LocalGitDirectory { get; }
+
+        public string LocalRepoDirectory => Path.GetDirectoryName(Path.GetDirectoryName(LocalGitDirectory));
+
+        public string Owner { get; set; }
+
         public List<PullRequest> PullRequests { get; } = new List<PullRequest>();
+
         public string RepoName { get; set; }
 
         public int RequestsLimit { get; private set; }
 
         public int RequestsRemaining { get; private set; }
-
-        /// <summary>
-        /// If the authentication file exists, it reads in the data.
-        /// If the authentication file doesn't exist, it creates a blank copy.
-        /// </summary>
-        public void GetConfiguration()
-        {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
-            Directory.CreateDirectory(path);
-            path = Path.Combine(path, ConfigFile);
-            if (File.Exists(path))
-            {
-                var json = File.ReadAllText(path);
-                try
-                {
-                    var auth = JsonConvert.DeserializeObject<Configuration>(json);
-                    AuthUsername = auth.Username;
-                    AuthToken = auth.AuthToken;
-                    LineEndings = auth.LineEnding;
-                    Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
-                }
-                catch (Exception ex)
-                {
-                    //Directory.Delete(CacheDirectory); This may be a good idea with a few more checks
-                    Logger.Error($"{ex.GetType().Name}: Couldn't deserialize {path} because {ex.Message}");
-                }
-            }
-            else
-            {
-                var newAuth = new Configuration();
-                File.WriteAllText(path, JsonConvert.SerializeObject(newAuth, Formatting.Indented));
-            }
-        }
 
         /// <summary>
         /// Looks for the git repo above the current file in the directory hierarchy. Null will be returned if no repo was found.
@@ -115,6 +89,45 @@ namespace SemDiff.Core
                 return null;
             }
             return _repoLookup.GetOrAdd(repoDir, AddRepo);
+        }
+
+        /// <summary>
+        /// If the authentication file exists, it reads in the data.
+        /// If the authentication file doesn't exist, it creates a blank copy.
+        /// </summary>
+        public void GetConfiguration()
+        {
+            if (File.Exists(ConfigFile))
+            {
+                var json = File.ReadAllText(ConfigFile);
+                try
+                {
+                    var auth = JsonConvert.DeserializeObject<Configuration>(json);
+                    LineEndings = auth.LineEnding;
+                    if (!string.IsNullOrWhiteSpace(auth.Username) && !string.IsNullOrWhiteSpace(auth.AuthToken))
+                    {
+                        UpdateAuthenticationHeader(auth.Username, auth.AuthToken);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    //Directory.Delete(CacheDirectory); This may be a good idea with a few more checks
+                    Logger.Error($"{ex.GetType().Name}: Couldn't deserialize {ConfigFile} because {ex.Message}");
+                }
+            }
+            else
+            {
+                var newAuth = new Configuration();
+                File.WriteAllText(ConfigFile, JsonConvert.SerializeObject(newAuth, Formatting.Indented));
+            }
+        }
+
+        //exposed for testing
+        internal void UpdateAuthenticationHeader(string authUsernam, string authToken)
+        {
+            AuthUsername = authUsernam;
+            AuthToken = authToken;
+            Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{AuthUsername}:{AuthToken}")));
         }
 
         /// <summary>
@@ -226,6 +239,42 @@ namespace SemDiff.Core
             return updated;
         }
 
+        public void UpdateGitIgnore()
+        {
+            var GitIgnore = Path.Combine(LocalRepoDirectory, ".gitignore");
+            var input = "";
+            if (File.Exists(GitIgnore))
+            {
+                input = File.ReadAllText(GitIgnore);
+            }
+            var UpdateGitIgnore = true;
+            var lines = input.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+            var builder = new StringBuilder();
+            foreach (var line in lines)
+            {
+                if (cacheFolder.Match(line).Success)
+                {
+                    UpdateGitIgnore = false;
+                }
+            }
+            if (UpdateGitIgnore)
+            {
+                builder.Append(input);
+                if (input != "")
+                {
+                    builder.Append(Environment.NewLine);
+                }
+                string[] GitIgnoreAddition = { @"#The Semdiff cache folder", ".semdiff/" };
+                foreach (var line in GitIgnoreAddition)
+                {
+                    builder.Append(line);
+                    builder.Append(Environment.NewLine);
+                }
+                File.WriteAllText(GitIgnore, builder.ToString());
+            }
+
+        }
+
         /// <summary>
         /// Makes a request to GitHub to update RequestsRemaining and RequestsLimit
         /// </summary>
@@ -267,6 +316,17 @@ namespace SemDiff.Core
             await Task.WhenAll(pulls.Select(p => p.GetFilesAsync()));
         }
 
+        internal static void ClearCache()
+        {
+            _repoLookup.Clear();
+        }
+        #region Move to config object
+
+        public static TimeSpan MaxUpdateInterval { get; set; } = TimeSpan.FromMinutes(5);
+        public string AuthToken { get; set; }
+        public string AuthUsername { get; set; }
+
+        #endregion Move to config object
         /// <summary>
         /// Construct the absolute path of a file in a pull request
         /// </summary>

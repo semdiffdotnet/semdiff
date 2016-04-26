@@ -14,18 +14,20 @@ namespace SemDiff.Test
         private string repository = "curly-broccoli";
         private const string authUsername = "haroldhues";
         private const string authToken = "9db4f2de497905dc5a5b2c597869a55a9ae05d9b";
-        private Repo github;
+        private Repo repo;
 
         public GitHubAuthTest()
         {
-            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData));
-            github = new Repo(repoLoc, owner, repository);
+            var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff),"semdiffdotnet", repository);
+            Directory.CreateDirectory(repoLoc);
+            repo = new Repo(repoLoc, owner, repository);
         }
 
         [TestInitialize]
         public void TestInit()
         {
-            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), github.ConfigFile);
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), repo.ConfigFile);
+            Directory.CreateDirectory(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff)));
             File.Delete(path);
             var auth = new Core.Configuration();
             auth.AuthToken = authToken;
@@ -37,15 +39,22 @@ namespace SemDiff.Test
         [TestMethod]
         public async Task AuthorizedPullRequests()
         {
+<<<<<<< HEAD:SemDiff.Test/GitHubAuthTests.cs
+            repo.GetAuthentication();
+            await repo.UpdateLimitAsync();
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), repo.ConfigFile);
+=======
             github.GetConfiguration();
             await github.UpdateLimitAsync();
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), github.ConfigFile);
+>>>>>>> master:SemDiff.Test/ConfigurationTests.cs
             File.Delete(path);
-            Assert.IsTrue(github.RequestsLimit > 60);
+            Assert.IsTrue(repo.RequestsLimit > 60);
         }
         private void LineEndingTest(string fileData, LineEndingType ending)
         {
-            var path = Path.Combine(github.CacheDirectory, "test.json");
+            var path = Path.Combine(repo.CacheDirectory, "test.json");
+            Directory.CreateDirectory(repo.CacheDirectory);
             File.WriteAllText(path, fileData);
             var json = File.ReadAllText(path);
             var auth = JsonConvert.DeserializeObject<Core.Configuration>(json);
