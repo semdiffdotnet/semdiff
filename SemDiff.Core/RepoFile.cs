@@ -4,6 +4,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using System;
+using SemDiff.Core.Exceptions;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -34,12 +36,17 @@ namespace SemDiff.Core
         public SyntaxTree BaseTree { get; set; }
 
         [JsonIgnore]
-        public string CachePathBase => Path.Combine(ParentPullRequst.CacheDirectory, Filename.ToStandardPath() + ".orig");
+        public string CachePathBase => Path.Combine(ParentPullRequst.CacheDirectory, Filename.ToLocalPath() + ".orig");
 
         [JsonIgnore]
-        public string CachePathHead => Path.Combine(ParentPullRequst.CacheDirectory, Filename.ToStandardPath());
+        public string CachePathHead => Path.Combine(ParentPullRequst.CacheDirectory, Filename.ToLocalPath());
 
         public string Filename { get; set; }
+
+        /// <summary>
+        /// There are cases where GitHub's diff messes up; See #82
+        /// </summary>
+        public bool IsInvalid { get; set; }
 
         /// <summary>
         /// The current file from the open pull request
@@ -58,19 +65,40 @@ namespace SemDiff.Core
 
         internal async Task DownloadFileAsync()
         {
-            var baseTsk = ParentRepo.HttpGetAsync($@"https://github.com/{ParentRepo.Owner}/{ParentRepo.RepoName}/raw/{ParentPullRequst.Base.Sha}/{Filename}");
-            var headTsk = ParentRepo.HttpGetAsync($@"https://github.com/{ParentRepo.Owner}/{ParentRepo.RepoName}/raw/{ParentPullRequst.Head.Sha}/{Filename}");
+            try
+            {
+                var baseTsk = ParentRepo.HttpGetAsync($@"https://github.com/{ParentRepo.Owner}/{ParentRepo.RepoName}/raw/{ParentPullRequst.Base.Sha}/{Filename}");
+                var headTsk = ParentRepo.HttpGetAsync($@"https://github.com/{ParentRepo.Owner}/{ParentRepo.RepoName}/raw/{ParentPullRequst.Head.Sha}/{Filename}");
 
-            var text = await Task.WhenAll(baseTsk, headTsk);
-            var baseText = text[0];
-            var headText = text[1];
+                var text = await Task.WhenAll(baseTsk, headTsk);
+                var baseText = text[0];
+                var headText = text[1];
 
-            BaseTree = CSharpSyntaxTree.ParseText(baseText);
-            HeadTree = CSharpSyntaxTree.ParseText(headText);
+                if (ParentRepo.LineEndings == LineEndingType.crlf)
+                {
+                    //Area for speed improvement
+                    baseText = baseText.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n");
+                    headText = headText.Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n");
+                }
+                else
+                {
+                    //Area for speed improvement
+                    baseText = baseText.Replace("\r\n", "\n").Replace("\r", "\n");
+                    headText = headText.Replace("\r\n", "\n").Replace("\r", "\n");
+                }
 
-            Directory.CreateDirectory(Path.GetDirectoryName(CachePathBase));
-            File.WriteAllText(CachePathBase, baseText);
-            File.WriteAllText(CachePathHead, headText);
+                BaseTree = CSharpSyntaxTree.ParseText(baseText);
+                HeadTree = CSharpSyntaxTree.ParseText(headText);
+
+                Directory.CreateDirectory(Path.GetDirectoryName(CachePathBase));
+                File.WriteAllText(CachePathBase, baseText);
+                File.WriteAllText(CachePathHead, headText);
+            }
+            catch (GitHubUnknownErrorException ex) when (ex.Message == "Not Found")
+            {
+                //See #82
+                IsInvalid = true;
+            }
         }
 
         internal void LoadFromCache()

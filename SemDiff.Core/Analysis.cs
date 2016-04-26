@@ -52,6 +52,7 @@ namespace SemDiff.Core
                         yield return new DetectedFalsePositive
                         {
                             Location = Location.Create(local, conflict.GetLocal().Identifier.Span),
+                            MethodName = ancestor.Identifier.ToString(),
                             RemoteFile = pull.File,
                             RemoteChange = pull.Change,
                             ConflictType = conflict.LocalLocation == InnerMethodConflict.Local.Changed
@@ -96,7 +97,8 @@ namespace SemDiff.Core
                                 Location = Location.Create(bt.Derived.SyntaxTree, bt.Derived.Identifier.Span),
                                 RemoteChange = p.Change,
                                 RemoteFile = p.File,
-                                TypeName = bt.Derived.Identifier.ToString(),
+                                DerivedTypeName = bt.Derived.Identifier.ToString(),
+                                BaseTypeName = bt.Bases.First().Identifier.ToString(),
                             };
                         }
                     }
@@ -148,7 +150,7 @@ namespace SemDiff.Core
             }
             relativePath = relativePath.ToStandardPath();
             return repo.PullRequests
-                .SelectMany(p => p.Files
+                .SelectMany(p => p.ValidFiles
                                    .Select(f => new { n = f.Filename, f, p }))
                                    .Where(a => a.n == relativePath)
                                    .Select(a => new Pull(a.f, a.p))

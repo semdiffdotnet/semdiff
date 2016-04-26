@@ -23,7 +23,7 @@ namespace SemDiff.Test
         public void TestInit()
         {
             var repoLoc = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), "semdiffdotnet", repository);
-            github = new Repo(repoLoc, owner, repository, authUsername, authToken);
+            github = new Repo(repoLoc, owner, repository);
             github.UpdateLimitAsync().Wait();
             var appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff));
             if (new FileInfo(appDataFolder).Exists)

@@ -60,7 +60,6 @@ namespace SemDiff.Core
                     var packagedir = Path.GetDirectoryName(analyzersdir);
                     //these are placed in a nested directory to avoid possible name conflicts in the future
                     var libgit2sharpresources = Path.Combine(packagedir, "libgit2sharpresources");
-
                     GlobalSettings.NativeLibraryPath = Path.Combine(libgit2sharpresources, "NativeBinaries");
 
                     if (!Directory.Exists(GlobalSettings.NativeLibraryPath))
@@ -91,30 +90,30 @@ namespace SemDiff.Core
                     {
                         await repo.UpdateRemoteChangesAsync();
                     }
-                    catch (GitHubAuthenticationFailureException)
+                    catch (GitHubAuthenticationFailureException ex)
                     {
-                        return new[] { Diagnostics.AuthenticationFailure() };
+                        return new[] { Diagnostics.AuthenticationFailure(ex.GithubMessage) };
                     }
-                    catch (GitHubRateLimitExceededException)
+                    catch (GitHubRateLimitExceededException ex)
                     {
-                        return new[] { Diagnostics.RateLimit() };
+                        return new[] { Diagnostics.RateLimit(ex.Limit, ex.Authenticated) };
                     }
                     catch (GitHubUrlNotFoundException ex)
                     {
-                        return new[] { Diagnostics.NotGitHubRepo(ex.Message) };
+                        return new[] { Diagnostics.NotGitHubRepo(ex.Path) };
                     }
                     catch (GitHubUnknownErrorException ex)
                     {
-                        return new[] { Diagnostics.UnexpectedError($"Communicating with GitHub: '{ex.Message}'") };
+                        return new[] { Diagnostics.UnexpectedError($"Communicating with GitHub", ex.Message) };
                     }
                     catch (GitHubDeserializationException ex)
                     {
-                        return new[] { Diagnostics.UnexpectedError($"Deserializing Data: '{ex.Message}'") };
+                        return new[] { Diagnostics.UnexpectedError($"Deserializing Data", ex.Message) };
                     }
                     catch (Exception ex)
                     {
                         Logger.Error($"Unhandled Exception from {nameof(repo.UpdateRemoteChangesAsync)}: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
-                        return new[] { Diagnostics.UnexpectedError($"Communicating with GitHub: '{ex.Message}'") };
+                        return new[] { Diagnostics.UnexpectedError($"Communicating with GitHub", ex.Message) };
                     }
                 }
 
@@ -131,7 +130,7 @@ namespace SemDiff.Core
             catch (Exception ex)
             {
                 Logger.Error($"Unhandled Exception: {ex.GetType().Name}: {ex.Message} << {ex.StackTrace} >>");
-                return new[] { Diagnostics.UnexpectedError("Running Analysis") };
+                return new[] { Diagnostics.UnexpectedError("Running Analysis", ex.Message) };
             }
             finally
             {

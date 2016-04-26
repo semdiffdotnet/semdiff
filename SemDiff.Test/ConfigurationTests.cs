@@ -39,9 +39,15 @@ namespace SemDiff.Test
         [TestMethod]
         public async Task AuthorizedPullRequests()
         {
+<<<<<<< HEAD:SemDiff.Test/GitHubAuthTests.cs
             repo.GetAuthentication();
             await repo.UpdateLimitAsync();
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), repo.ConfigFile);
+=======
+            github.GetConfiguration();
+            await github.UpdateLimitAsync();
+            var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), nameof(SemDiff), github.ConfigFile);
+>>>>>>> master:SemDiff.Test/ConfigurationTests.cs
             File.Delete(path);
             Assert.IsTrue(repo.RequestsLimit > 60);
         }

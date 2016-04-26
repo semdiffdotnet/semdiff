@@ -12,8 +12,13 @@ namespace SemDiff.Core.Exceptions
     [Serializable]
     public class GitHubRateLimitExceededException : Exception
     {
-        public GitHubRateLimitExceededException() : base("Rate Limit Exceeded")
+        public GitHubRateLimitExceededException(int limit, bool authenticated) : base("Rate Limit Exceeded")
         {
+            Limit = limit;
+            Authenticated = authenticated;
         }
+
+        public bool Authenticated { get; }
+        public int Limit { get; }
     }
 }
