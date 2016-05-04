@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/10/nuspec.xsd">
   <metadata>
     <id>SemDiff</id>
-    <!-- Change to the current version number (ex: 0.1-alpha) to build with package, also change release notes (add githash please) -->
+    <!-- Change to the current version number (ex: 0.1-alpha) to build with package, also change release notes -->
     <version>$version$</version>
     <title>SemDiff - C# Semantic Diff</title>
     <authors>https://github.com/orgs/semdiffdotnet/people</authors>
@@ -16,7 +16,15 @@
       This is a community project, free and open source. Everyone is invited to contribute, fork, share and use the code. No money shall be charged by this software, nor it will be. Ever.
     </description>
     <summary>Tool which can diff C# code semantically, rather than simply by the program's text</summary>
-    <releaseNotes>Initial Packaged Release - This is a beta release and may have bugs or cause crashes</releaseNotes>
+    <releaseNotes>This release contains all the initial features of SemDiff
+ * Compatible with C# projects in Visual Studio (2015) that have a public GitHub repo
+ * Supports authentication with GitHub via personal tokens
+ * Identifies project's repo and GitHub URL
+ * Downloads data from all open pull requests
+ * Detects the moved method false-positive condition
+ * Detects the base class changed false-negative condition
+ * Packaged with NuGet
+    </releaseNotes>
     <tags>roslyn, analyzers, semantics, merge, github, csharp</tags>
     <developmentDependency>true</developmentDependency>
     <frameworkAssemblies>
