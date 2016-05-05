@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
 using SemDiff.Core.Exceptions;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
@@ -22,8 +23,9 @@ namespace SemDiff.Core
     [DiagnosticAnalyzer(LanguageNames.CSharp)]
     public class SemDiffAnalyzer : DiagnosticAnalyzer
     {
+        private static readonly ConcurrentDictionary<string, Repo> _treePathLookup = new ConcurrentDictionary<string, Repo>();
+        private static int libGit2SharpNativePathSet;
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Diagnostics.Supported;
-        internal static DataStore Store { get; } = new DataStore();
 
         /// <summary>
         /// Called once at session start to register actions in the analysis context.
@@ -40,9 +42,7 @@ namespace SemDiff.Core
             context.RegisterCompilationAction(OnCompilation);
         }
 
-        private int libGit2SharpNativePathSet;
-
-        private void SetupLibGit2Sharp()
+        private static void SetupLibGit2Sharp()
         {
             // It is important to only set the native library path before they are accessed for the first time.
             // Otherwise exceptions will be thrown. So this code is only executed once.
@@ -71,6 +71,13 @@ namespace SemDiff.Core
             }
         }
 
+        private static Repo GetRepo(SyntaxTree tree)
+        {
+            return _treePathLookup.AddOrUpdate(tree.FilePath,
+                p => Repo.GetRepoFor(p),
+                (p, o) => o ?? Repo.GetRepoFor(p)); //Always check again if null
+        }
+
         private static void OnCompilation(CompilationAnalysisContext context)
         {
             var diags = OnCompilationAsync(context.Compilation).Result;
@@ -85,9 +92,8 @@ namespace SemDiff.Core
             Logger.Trace($"Entering {nameof(OnCompilationAsync)}: {comp.AssemblyName}");
             try
             {
-                var data = Store.InterlockedAddOrUpdate(comp.AssemblyName, comp.SyntaxTrees, GetRepo);
-                var repos = data.Repos;
-                foreach (var repo in repos)
+                var data = comp.GetRepoAndTrees(GetRepo);
+                foreach (var repo in data.Keys)
                 {
                     try
                     {
@@ -121,11 +127,12 @@ namespace SemDiff.Core
                 }
 
                 var diagnostics = new List<Diagnostic>();
-                foreach (var r in repos)
+                foreach (var rt in data)
                 {
-                    foreach (var t in data.GetTreesForRepo(r))
+                    var repo = rt.Key;
+                    foreach (var t in rt.Value) //Foreach tree
                     {
-                        diagnostics.AddRange(Analyze(comp.GetSemanticModel(t), r));
+                        diagnostics.AddRange(Analyze(comp.GetSemanticModel(t), repo));
                     }
                 }
                 return diagnostics;
@@ -140,8 +147,6 @@ namespace SemDiff.Core
                 Logger.Trace($"Entering {nameof(OnCompilationAsync)}: {comp.AssemblyName}");
             }
         }
-
-        private static Repo GetRepo(SyntaxTree tree) => Repo.GetRepoFor(tree.FilePath);
 
         private static IEnumerable<Diagnostic> Analyze(SemanticModel semanticModel, Repo repo)
         {

@@ -278,5 +278,32 @@ namespace SemDiff.Core
         {
             return source;
         }
+
+        internal static Dictionary<Repo, List<SyntaxTree>> GetRepoAndTrees(this Compilation comp, Func<SyntaxTree, Repo> getRepo)
+        {
+            if (getRepo == null)
+                throw new InvalidOperationException();
+
+            var dictionary = new Dictionary<Repo, List<SyntaxTree>>();
+            foreach (var t in comp.SyntaxTrees)
+            {
+                var repo = getRepo(t);
+                if (repo == null)
+                {
+                    continue; //Not a part of a repo
+                }
+                if (dictionary.ContainsKey(repo))
+                {
+                    dictionary[repo].Add(t);
+                }
+                else
+                {
+                    var list = new List<SyntaxTree>();
+                    list.Add(t);
+                    dictionary[repo] = list;
+                }
+            }
+            return dictionary;
+        }
     }
 }
