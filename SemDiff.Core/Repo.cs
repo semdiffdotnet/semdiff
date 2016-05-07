@@ -238,7 +238,9 @@ namespace SemDiff.Core
             UpdateLocalSavedList();
             return updated;
         }
-
+        /// <summary>
+        /// Reads the .gitignore file. If ".semdiff/" is found in the file, nothing happens, otherwise it is added.
+        /// </summary>
         public void UpdateGitIgnore()
         {
             var GitIgnore = Path.Combine(LocalRepoDirectory, ".gitignore");
