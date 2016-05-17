@@ -63,7 +63,7 @@ namespace SemDiff.Core
         //Filters a list of files leaving only the files that semdiff can actually use
         internal static IEnumerable<RepoFile> FilterFiles(IEnumerable<RepoFile> files)
         {
-            return files.Where(current =>
+            return files.Where(c => Path.GetExtension(c.Filename) == ".cs").Where(current =>
             {
                 switch (current.Status)
                 {

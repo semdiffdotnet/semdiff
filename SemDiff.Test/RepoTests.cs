@@ -82,7 +82,7 @@ namespace SemDiff.Test
             var PRs = repo.GetPullRequestsAsync().Result;
             Assert.AreEqual(1, PRs.Count);
             var pr = PRs.First();
-            Assert.AreEqual(84, pr.ValidFiles.Count());
+            Assert.AreEqual(83, pr.ValidFiles.Count());
         }
 
         [TestMethod]
@@ -225,6 +225,35 @@ namespace SemDiff.Test
             var repo = Repo.GetRepoFor(thisFile);
             Assert.AreEqual("semdiffdotnet", repo.Owner);
             Assert.AreEqual("semdiff", repo.RepoName);
+        }
+
+        [TestMethod]
+        public void FilterFilesTest()
+        {
+            var files = new[]
+            {
+                new RepoFile
+                {
+                    Status = RepoFile.StatusEnum.Modified,
+                    Filename = "folder/ClassName.cs",
+                },
+                new RepoFile
+                {
+                    Status = RepoFile.StatusEnum.Modified,
+                    Filename = "folder/ProjName.csproj",
+                },
+                new RepoFile
+                {
+                    Status = RepoFile.StatusEnum.Removed,
+                    Filename = "folder/NameClass.cs",
+                }
+
+            };
+            var files2 = PullRequest.FilterFiles(files);
+            var f = files2.Single();
+            Assert.AreEqual("folder/ClassName.cs", f.Filename);
+            Assert.AreEqual(RepoFile.StatusEnum.Modified, f.Status);
+            
         }
 
         private string GetFileName([CallerFilePath] string file = "") => file;
