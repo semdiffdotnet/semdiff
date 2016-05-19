@@ -16,14 +16,17 @@
       This is a community project, free and open source. Everyone is invited to contribute, fork, share and use the code. No money shall be charged by this software, nor it will be. Ever.
     </description>
     <summary>Tool which can diff C# code semantically, rather than simply by the program's text</summary>
-    <releaseNotes>This release contains all the initial features of SemDiff
- * Compatible with C# projects in Visual Studio (2015) that have a public GitHub repo
- * Supports authentication with GitHub via personal tokens
- * Identifies project's repo and GitHub URL
- * Downloads data from all open pull requests
- * Detects the moved method false-positive condition
- * Detects the base class changed false-negative condition
- * Packaged with NuGet
+    <releaseNotes>
+      1.1 | Bug Fix
+      * Non cs files are now properly ignored
+      1.0 | This release contains all the initial features of SemDiff
+      * Compatible with C# projects in Visual Studio (2015) that have a public GitHub repo
+      * Supports authentication with GitHub via personal tokens
+      * Identifies project's repo and GitHub URL
+      * Downloads data from all open pull requests
+      * Detects the moved method false-positive condition
+      * Detects the base class changed false-negative condition
+      * Packaged with NuGet
     </releaseNotes>
     <tags>roslyn, analyzers, semantics, merge, github, csharp</tags>
     <developmentDependency>true</developmentDependency>
