@@ -1,0 +1,4 @@
+var class_sem_diff_1_1_core_1_1_exceptions_1_1_git_hub_authentication_failure_exception =
+[
+    [ "GitHubAuthenticationFailureException", "class_sem_diff_1_1_core_1_1_exceptions_1_1_git_hub_authentication_failure_exception.html#a515541d7f1a875e7c482602589aff295", null ]
+];

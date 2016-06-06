@@ -1,0 +1,27 @@
+var class_sem_diff_1_1_core_1_1_repo =
+[
+    [ "Repo", "class_sem_diff_1_1_core_1_1_repo.html#a9129369087fd2efba5ae53bcd05b4b3c", null ],
+    [ "GetConfiguration", "class_sem_diff_1_1_core_1_1_repo.html#a73b3696d435d6baa84ac52aabdf4174d", null ],
+    [ "GetCurrentSaved", "class_sem_diff_1_1_core_1_1_repo.html#abc97121e3c0c5a357908f4c1a2936287", null ],
+    [ "GetPullRequestsAsync", "class_sem_diff_1_1_core_1_1_repo.html#a77d6e7bcedf22b4cf7f178b2a57ee4b5", null ],
+    [ "UpdateGitIgnore", "class_sem_diff_1_1_core_1_1_repo.html#ab33dfe660ef1986b18cb9f143315e153", null ],
+    [ "UpdateLimitAsync", "class_sem_diff_1_1_core_1_1_repo.html#a671d1cc1db80cef5cb8c24f000c044cc", null ],
+    [ "UpdateLocalSavedList", "class_sem_diff_1_1_core_1_1_repo.html#acd57a67736fafe6529182befdcea23d1", null ],
+    [ "UpdateRemoteChangesAsync", "class_sem_diff_1_1_core_1_1_repo.html#a7294c6f73c342c54e49ba4dd580d9365", null ],
+    [ "CachedLocalPullRequestListPath", "class_sem_diff_1_1_core_1_1_repo.html#a0db5470d18c87bba2201b02531abc5e5", null ],
+    [ "LocalRepoDirectory", "class_sem_diff_1_1_core_1_1_repo.html#a70c11c8aa91211161bb1f757fe98b50f", null ],
+    [ "AuthToken", "class_sem_diff_1_1_core_1_1_repo.html#a7757d1116bcbde38c89ab09ed030363f", null ],
+    [ "AuthUsername", "class_sem_diff_1_1_core_1_1_repo.html#a939797caf595fc04470baacae6f5a0c1", null ],
+    [ "CacheDirectory", "class_sem_diff_1_1_core_1_1_repo.html#a678ae7de9e5f45c49f0b592df66a960a", null ],
+    [ "Client", "class_sem_diff_1_1_core_1_1_repo.html#a3172ee2940dfa3efcf658f0e169bbe73", null ],
+    [ "ConfigFile", "class_sem_diff_1_1_core_1_1_repo.html#ae4e42444dda3599bd78cca3f6c08da2e", null ],
+    [ "EtagNoChanges", "class_sem_diff_1_1_core_1_1_repo.html#ae652621c03c37d4dfa9c4034a820ad9b", null ],
+    [ "LastUpdate", "class_sem_diff_1_1_core_1_1_repo.html#ae33750d879ca85564d3ede601f811b7e", null ],
+    [ "LineEndings", "class_sem_diff_1_1_core_1_1_repo.html#a83e6606acd4c5d9908b8687d9b9c07ed", null ],
+    [ "LocalGitDirectory", "class_sem_diff_1_1_core_1_1_repo.html#a439de88e990ef519f8fc003ab692b18c", null ],
+    [ "Owner", "class_sem_diff_1_1_core_1_1_repo.html#a14f41b15f48001a8dcbc8e1c266b5077", null ],
+    [ "PullRequests", "class_sem_diff_1_1_core_1_1_repo.html#a6bc7e35b44cbc72024287932307dc0ee", null ],
+    [ "RepoName", "class_sem_diff_1_1_core_1_1_repo.html#a3ee97c60a34e8a73d1ffba1df0451e21", null ],
+    [ "RequestsLimit", "class_sem_diff_1_1_core_1_1_repo.html#aa127a74accc840f3dfdba2af15132ae6", null ],
+    [ "RequestsRemaining", "class_sem_diff_1_1_core_1_1_repo.html#a10e20d4e53a4a9168438a4b662547708", null ]
+];
